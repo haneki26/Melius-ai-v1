@@ -26,9 +26,10 @@ function MeliusOrb({ onTranscript, lastReply }) {
   }, [lastReply]);
 
   // Cleanup
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => stopEverything();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopEverything = () => {
     synthRef.current?.cancel();
