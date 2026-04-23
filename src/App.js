@@ -1,0 +1,250 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from './supabase';
+import AuthScreen from './components/AuthScreen';
+import Header from './components/Header';
+import ContextBar from './components/ContextBar';
+import ChatInput from './components/ChatInput';
+import DailyPlan from './components/DailyPlan';
+import LogPanel from './components/LogPanel';
+import MeliusOrb from './components/MeliusOrb';
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [plan, setPlan] = useState(null);
+  const [userContext, setUserContext] = useState(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [lastReply, setLastReply] = useState(null);
+  const [logs, setLogs] = useState({ plans: [], training: [], activity: [] });
+  const chatInputRef = useRef(null);
+
+  // Check existing session on load
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        loadUserData(session.user.id);
+      }
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        setUserContext(null);
+        setLogs({ plans: [], training: [], activity: [] });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserData = async (userId) => {
+    // Load profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.name) {
+      setUserContext({
+        name: profile.name,
+        age: profile.age?.toString() || '',
+        lifestyle: profile.lifestyle || 'student',
+        weeklyGoals: profile.weekly_goals || '',
+        notes: profile.notes || '',
+      });
+    }
+
+    // Load recent plans
+    const { data: plans } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (plans) {
+      const daily = plans.filter(p => p.mode !== 'Training plan').map(p => ({
+        summary: p.summary,
+        schedule: p.schedule,
+        recommendations: p.recommendations,
+        mode: p.mode,
+        date: new Date(p.created_at).toLocaleDateString([], {
+          weekday: 'short', month: 'short', day: 'numeric'
+        }),
+      }));
+      const training = plans.filter(p => p.mode === 'Training plan').map(p => ({
+        summary: p.summary,
+        schedule: p.schedule,
+        recommendations: p.recommendations,
+        date: new Date(p.created_at).toLocaleDateString([], {
+          weekday: 'short', month: 'short', day: 'numeric'
+        }),
+      }));
+      setLogs(prev => ({ ...prev, plans: daily, training }));
+    }
+
+    // Load recent activity
+    const { data: activity } = await supabase
+      .from('activity_log')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (activity) {
+      setLogs(prev => ({
+        ...prev,
+        activity: activity.map(a => ({
+          icon: a.icon,
+          text: a.text,
+          time: new Date(a.created_at).toLocaleTimeString([], {
+            hour: '2-digit', minute: '2-digit'
+          }),
+        })),
+      }));
+    }
+  };
+
+  const saveActivity = async (icon, text) => {
+    if (!user) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setLogs(prev => ({
+      ...prev,
+      activity: [{ icon, text, time }, ...prev.activity],
+    }));
+    await supabase.from('activity_log').insert({
+      user_id: user.id,
+      icon,
+      text,
+    });
+  };
+
+  const handleContextSave = async (context) => {
+    setUserContext(context);
+    saveActivity('👤', `Profile updated — ${context.name || 'unnamed'}`);
+    setLastReply(
+      context.name
+        ? `Got it. Nice to meet you, ${context.name}. Your profile is saved.`
+        : 'Profile saved.'
+    );
+
+    if (!user) return;
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      name: context.name,
+      age: context.age ? parseInt(context.age) : null,
+      lifestyle: context.lifestyle,
+      weekly_goals: context.weeklyGoals,
+      notes: context.notes,
+      updated_at: new Date().toISOString(),
+    });
+  };
+
+  const handlePlanReady = async (planData, mode) => {
+    setPlan(planData);
+    const date = new Date().toLocaleDateString([], {
+      weekday: 'short', month: 'short', day: 'numeric'
+    });
+    const newEntry = { ...planData, date, mode: mode || 'Daily plan' };
+
+    if (mode === 'Training plan') {
+      setLogs(prev => ({ ...prev, training: [newEntry, ...prev.training] }));
+    } else {
+      setLogs(prev => ({ ...prev, plans: [newEntry, ...prev.plans] }));
+    }
+
+    saveActivity('📅', `${mode || 'Daily'} plan generated`);
+
+    if (planData.summary) {
+      setLastReply(`Here's your plan. ${planData.summary}`);
+    }
+
+    // Save plan to Supabase
+    if (!user) return;
+    await supabase.from('plans').insert({
+      user_id: user.id,
+      mode: mode || 'Daily plan',
+      summary: planData.summary,
+      recommendations: planData.recommendations || [],
+      schedule: planData.schedule || [],
+    });
+  };
+
+  const handleOrbTranscript = (text) => {
+    if (chatInputRef.current) {
+      chatInputRef.current.receiveVoiceInput(text);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setPlan(null);
+    setLastReply(null);
+  };
+
+  // Loading screen
+  if (authLoading) {
+    return (
+      <div className="auth-loading">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  // Auth screen
+  if (!user) {
+    return <AuthScreen onAuth={(u) => { setUser(u); loadUserData(u.id); }} />;
+  }
+
+  // Main app
+  return (
+    <div className="app">
+      <button className="log-toggle-btn" onClick={() => setLogOpen(true)}>
+        <span className="log-toggle-icon">☰</span>
+        <span className="log-toggle-label">Log</span>
+        {(logs.plans.length + logs.training.length) > 0 && (
+          <span className="log-badge">{logs.plans.length + logs.training.length}</span>
+        )}
+      </button>
+
+      <button className="signout-btn" onClick={handleSignOut} title="Sign out">
+        ↩
+      </button>
+
+      <Header />
+      <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
+
+      {!plan && (
+        <ChatInput
+          ref={chatInputRef}
+          onSubmit={handlePlanReady}
+          userContext={userContext}
+          onMeliusReply={setLastReply}
+        />
+      )}
+
+      {plan && (
+        <DailyPlan
+          plan={plan}
+          onReset={() => {
+            setPlan(null);
+            saveActivity('🔄', 'Started new session');
+            setLastReply('Ready for your next plan. What would you like?');
+          }}
+        />
+      )}
+
+      <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
+
+      <LogPanel isOpen={logOpen} onClose={() => setLogOpen(false)} logs={logs} />
+    </div>
+  );
+}
+
+export default App;
