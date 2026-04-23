@@ -51,8 +51,8 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/chat-plan', {
-        method: 'POST',
+     const response = await fetch('https://melius-backend-production.up.railway.app/api/chat-plan', {
+          method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text.trim(),
