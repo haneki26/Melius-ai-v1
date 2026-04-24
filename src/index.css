@@ -1938,4 +1938,107 @@ body::before {
   .app {
     padding-bottom: 180px; /* extra space for Safari bottom bar */
   }
+}/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+.log-card-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: background 0.15s;
+  border-radius: var(--radius-md);
+}
+
+.log-card-toggle:hover {
+  background: var(--paper-warm);
+}
+
+.log-card-header-text {
+  flex: 1;
+}
+
+.log-card-chevron {
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.log-card-expanded {
+  border-top: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.log-expanded-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-expanded-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.log-rec-item {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  padding: 8px 10px;
+  background: var(--gold-dim);
+  border-radius: var(--radius-sm);
+}
+
+.log-schedule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-schedule-item:last-child {
+  border-bottom: none;
+}
+
+.log-schedule-time {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--gold);
+  min-width: 42px;
+  margin-top: 2px;
+}
+
+.log-schedule-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.log-schedule-title {
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.log-schedule-desc {
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+  line-height: 1.4;
 }
