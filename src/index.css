@@ -2129,4 +2129,80 @@ body::before {
 .pending-image-clear:hover {
   background: rgba(0,0,0,0.08);
   color: var(--ink);
+}/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+/* ── ORB SUN RAYS ── */
+.orb-rays {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orb-rays svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes rays-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes rays-spin-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+
+/* Idle — slow gentle rotation */
+.orb--idle .orb-rays {
+  animation: rays-spin 20s linear infinite;
+  opacity: 0.55;
+}
+
+/* Listening — faster spin, brighter */
+.orb--listening .orb-rays {
+  animation: rays-spin 6s linear infinite;
+  opacity: 0.9;
+}
+
+/* Thinking — reverse slow spin */
+.orb--thinking .orb-rays {
+  animation: rays-spin-slow 10s linear infinite;
+  opacity: 0.6;
+}
+
+/* Speaking — medium speed, full brightness */
+.orb--speaking .orb-rays {
+  animation: rays-spin 12s linear infinite;
+  opacity: 0.85;
+}
+
+/* Make sure orb core sits above rays */
+.orb-core {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── HEADER BRAND ── */
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.header-brand svg {
+  animation: rays-spin 20s linear infinite;
+  transform-origin: center;
+  flex-shrink: 0;
+}
+
+@keyframes rays-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
