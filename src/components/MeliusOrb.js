@@ -45,9 +45,9 @@ function MeliusOrb({ onTranscript, lastReply }) {
   useEffect(() => {
     if (lastReply) speakText(lastReply);
   }, [lastReply]);
-
+// eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    return () => stopEverything(); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => stopEverything(); 
   }, []);
 
   const stopEverything = () => {
