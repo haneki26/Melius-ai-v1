@@ -1596,6 +1596,7 @@ body::before {
   background: transparent !important;
   box-shadow: none !important;
   outline: none;
+  overflow: visible !important;
 }
 
 .orb:focus { outline: none; }
