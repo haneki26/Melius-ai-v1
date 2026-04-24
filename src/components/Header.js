@@ -1,5 +1,4 @@
 import React from 'react';
-import MeliusLogo from './MeliusLogo';
 
 function Header() {
   const hour = new Date().getHours();
@@ -11,10 +10,7 @@ function Header() {
   return (
     <header className="header fade-up">
       <p className="header-eyebrow">{greeting}</p>
-      <div className="header-brand">
-        <MeliusLogo size={44} spinning={true} />
-        <h1 className="logo">Melius<span>.</span></h1>
-      </div>
+      <h1 className="logo">Melius<span>.</span></h1>
       <p className="tagline">
         Your personal AI agent — plans your day, remembers your life, acts on your behalf.
       </p>
