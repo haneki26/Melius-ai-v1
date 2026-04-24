@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+'import React, { useState, useRef, useEffect } from 'react';
 
 const STATES = {
   IDLE: 'idle',
@@ -7,27 +7,28 @@ const STATES = {
   SPEAKING: 'speaking',
 };
 
-// Sun rays SVG — 16 alternating long/short rays, no core
+// Flame-style sun rays like reference image — curved organic rays
 const SunRays = () => (
-  <svg viewBox="-70 -70 140 140" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="-80 -80 160 160" xmlns="http://www.w3.org/2000/svg">
+    {/* 16 curved flame rays alternating long and short */}
     {/* Long rays */}
-    <polygon points="0,-65 -5,-38 5,-38" fill="#C9A84C"/>
-    <polygon points="0,65 -5,38 5,38" fill="#C9A84C"/>
-    <polygon points="-65,0 -38,-5 -38,5" fill="#C9A84C"/>
-    <polygon points="65,0 38,-5 38,5" fill="#C9A84C"/>
-    <polygon points="-46,-46 -28,-23 -23,-28" fill="#C9A84C"/>
-    <polygon points="46,-46 28,-23 23,-28" fill="#C9A84C"/>
-    <polygon points="-46,46 -28,23 -23,28" fill="#C9A84C"/>
-    <polygon points="46,46 28,23 23,28" fill="#C9A84C"/>
-    {/* Short rays */}
-    <polygon points="0,-48 -3.5,-30 3.5,-30" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="0,48 -3.5,30 3.5,30" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="-48,0 -30,-3.5 -30,3.5" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="48,0 30,-3.5 30,3.5" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="-34,-34 -20,-16 -16,-20" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="34,-34 20,-16 16,-20" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="-34,34 -20,16 -16,20" fill="#C9A84C" opacity="0.7"/>
-    <polygon points="34,34 20,16 16,20" fill="#C9A84C" opacity="0.7"/>
+    <path d="M 0,-32 C 4,-48 6,-65 0,-72 C -6,-65 -4,-48 0,-32" fill="#C9A84C"/>
+    <path d="M 0,32 C -4,48 -6,65 0,72 C 6,65 4,48 0,32" fill="#C9A84C"/>
+    <path d="M -32,0 C -48,-4 -65,-6 -72,0 C -65,6 -48,4 -32,0" fill="#C9A84C"/>
+    <path d="M 32,0 C 48,4 65,6 72,0 C 65,-6 48,-4 32,0" fill="#C9A84C"/>
+    <path d="M -22,-22 C -33,-36 -44,-50 -51,-51 C -50,-44 -36,-33 -22,-22" fill="#C9A84C"/>
+    <path d="M 22,-22 C 36,-33 50,-44 51,-51 C 44,-50 33,-36 22,-22" fill="#C9A84C"/>
+    <path d="M -22,22 C -33,36 -44,50 -51,51 C -50,44 -36,33 -22,22" fill="#C9A84C"/>
+    <path d="M 22,22 C 36,33 50,44 51,51 C 44,50 33,36 22,22" fill="#C9A84C"/>
+    {/* Short rays between */}
+    <path d="M -12,-30 C -14,-44 -12,-55 -10,-58 C -6,-52 -7,-42 -12,-30" fill="#C9A84C" opacity="0.75"/>
+    <path d="M 12,-30 C 14,-44 12,-55 10,-58 C 6,-52 7,-42 12,-30" fill="#C9A84C" opacity="0.75"/>
+    <path d="M -12,30 C -14,44 -12,55 -10,58 C -6,52 -7,42 -12,30" fill="#C9A84C" opacity="0.75"/>
+    <path d="M 12,30 C 14,44 12,55 10,58 C 6,52 7,42 12,30" fill="#C9A84C" opacity="0.75"/>
+    <path d="M -30,-12 C -44,-14 -55,-12 -58,-10 C -52,-6 -42,-7 -30,-12" fill="#C9A84C" opacity="0.75"/>
+    <path d="M -30,12 C -44,14 -55,12 -58,10 C -52,6 -42,7 -30,12" fill="#C9A84C" opacity="0.75"/>
+    <path d="M 30,-12 C 44,-14 55,-12 58,-10 C 52,-6 42,-7 30,-12" fill="#C9A84C" opacity="0.75"/>
+    <path d="M 30,12 C 44,14 55,12 58,10 C 52,6 42,7 30,12" fill="#C9A84C" opacity="0.75"/>
   </svg>
 );
 
@@ -42,19 +43,30 @@ function MeliusOrb({ onTranscript, lastReply }) {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
 
-  useEffect(() => {
-    if (lastReply) speakText(lastReply);
-  }, [lastReply]);
-// eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    return () => stopEverything(); 
-  }, []);
+  // Define stopEverything BEFORE the useEffect that uses it
+  const stopAmplitudeTracking = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    }
+    setAmplitude(0);
+  };
 
   const stopEverything = () => {
     synthRef.current?.cancel();
     recognitionRef.current?.abort();
     stopAmplitudeTracking();
   };
+
+  useEffect(() => {
+    if (lastReply) speakText(lastReply);
+  }, [lastReply]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    return () => stopEverything();
+  }, []);
 
   const speakText = (text) => {
     if (!window.speechSynthesis) return;
@@ -105,15 +117,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
       };
       tick();
     } catch (e) {}
-  };
-
-  const stopAmplitudeTracking = () => {
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(t => t.stop());
-      micStreamRef.current = null;
-    }
-    setAmplitude(0);
   };
 
   const handleOrbClick = () => {
@@ -220,11 +223,9 @@ function MeliusOrb({ onTranscript, lastReply }) {
         aria-label={label}
         title={label}
       >
-        {/* Rotating sun rays */}
         <div className="orb-rays">
           <SunRays />
         </div>
-
         <span className="orb-ring orb-ring--1" />
         <span className="orb-ring orb-ring--2" />
         <span className="orb-ring orb-ring--3" />
@@ -236,4 +237,4 @@ function MeliusOrb({ onTranscript, lastReply }) {
   );
 }
 
-export default MeliusOrb;
+export default MeliusOrb;'
