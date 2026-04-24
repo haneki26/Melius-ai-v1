@@ -237,4 +237,4 @@ function MeliusOrb({ onTranscript, lastReply }) {
   );
 }
 
-export default MeliusOrb;'
+export default MeliusOrb;
