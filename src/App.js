@@ -7,6 +7,7 @@ import ChatInput from './components/ChatInput';
 import DailyPlan from './components/DailyPlan';
 import LogPanel from './components/LogPanel';
 import MeliusOrb from './components/MeliusOrb';
+import CalorieTracker from './components/Calorietracker';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -16,9 +17,10 @@ function App() {
   const [logOpen, setLogOpen] = useState(false);
   const [lastReply, setLastReply] = useState(null);
   const [logs, setLogs] = useState({ plans: [], training: [], activity: [] });
+  const [calorieData, setCalorieData] = useState(null);
+  const [showCalorieTracker, setShowCalorieTracker] = useState(false);
   const chatInputRef = useRef(null);
 
-  // Check existing session on load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -43,7 +45,6 @@ function App() {
   }, []);
 
   const loadUserData = async (userId) => {
-    // Load profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -60,7 +61,6 @@ function App() {
       });
     }
 
-    // Load recent plans
     const { data: plans } = await supabase
       .from('plans')
       .select('*')
@@ -89,7 +89,6 @@ function App() {
       setLogs(prev => ({ ...prev, plans: daily, training }));
     }
 
-    // Load recent activity
     const { data: activity } = await supabase
       .from('activity_log')
       .select('*')
@@ -118,11 +117,7 @@ function App() {
       ...prev,
       activity: [{ icon, text, time }, ...prev.activity],
     }));
-    await supabase.from('activity_log').insert({
-      user_id: user.id,
-      icon,
-      text,
-    });
+    await supabase.from('activity_log').insert({ user_id: user.id, icon, text });
   };
 
   const handleContextSave = async (context) => {
@@ -133,7 +128,6 @@ function App() {
         ? `Got it. Nice to meet you, ${context.name}. Your profile is saved.`
         : 'Profile saved.'
     );
-
     if (!user) return;
     await supabase.from('profiles').upsert({
       id: user.id,
@@ -162,10 +156,9 @@ function App() {
     saveActivity('📅', `${mode || 'Daily'} plan generated`);
 
     if (planData.summary) {
-      setLastReply(`Here's your plan. ${planData.summary}`);
+      setLastReply(`Here is your plan. ${planData.summary}`);
     }
 
-    // Save plan to Supabase
     if (!user) return;
     await supabase.from('plans').insert({
       user_id: user.id,
@@ -174,6 +167,11 @@ function App() {
       recommendations: planData.recommendations || [],
       schedule: planData.schedule || [],
     });
+  };
+
+  const handleCalorieUpdate = (data) => {
+    setCalorieData(data);
+    setShowCalorieTracker(true);
   };
 
   const handleOrbTranscript = (text) => {
@@ -188,7 +186,6 @@ function App() {
     setLastReply(null);
   };
 
-  // Loading screen
   if (authLoading) {
     return (
       <div className="auth-loading">
@@ -197,12 +194,10 @@ function App() {
     );
   }
 
-  // Auth screen
   if (!user) {
     return <AuthScreen onAuth={(u) => { setUser(u); loadUserData(u.id); }} />;
   }
 
-  // Main app
   return (
     <div className="app">
       <button className="log-toggle-btn" onClick={() => setLogOpen(true)}>
@@ -213,32 +208,31 @@ function App() {
         )}
       </button>
 
-      <button className="signout-btn" onClick={handleSignOut} title="Sign out">
-        ↩
-      </button>
+      <button className="signout-btn" onClick={handleSignOut} title="Sign out">↩</button>
 
       <Header />
       <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
 
-      {!plan && (
-        <ChatInput
-          ref={chatInputRef}
-          onSubmit={handlePlanReady}
-          userContext={userContext}
-          onMeliusReply={setLastReply}
+      {/* Calorie tracker — shows when active */}
+      {showCalorieTracker && (
+        <CalorieTracker
+          data={calorieData}
+          onClose={() => setShowCalorieTracker(false)}
+          onUpdate={setCalorieData}
         />
       )}
 
-      {plan && (
-        <DailyPlan
-          plan={plan}
-          onReset={() => {
-            setPlan(null);
-            saveActivity('🔄', 'Started new session');
-            setLastReply('Ready for your next plan. What would you like?');
-          }}
-        />
-      )}
+      {/* Chat is always visible — plan shows inside chat when ready */}
+      <ChatInput
+        ref={chatInputRef}
+        onSubmit={handlePlanReady}
+        userContext={userContext}
+        onMeliusReply={setLastReply}
+        onCalorieUpdate={handleCalorieUpdate}
+        calorieData={calorieData}
+        currentPlan={plan}
+        onClearPlan={() => setPlan(null)}
+      />
 
       <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
 

@@ -2203,4 +2203,392 @@ body::before {
   animation: header-logo-spin 20s linear infinite;
   transform-origin: center;
   flex-shrink: 0;
+}/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+/* ── FILE UPLOAD BUTTON ── */
+.chat-file-btn {
+  position: absolute;
+  right: 76px;
+  bottom: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+  color: var(--ink-muted);
 }
+
+.chat-file-btn:hover { background: var(--paper-warm); }
+
+/* Shift camera and mic buttons */
+.chat-camera-btn { right: 44px; }
+.chat-mic-btn { right: 10px; }
+
+/* ── PENDING FILE ── */
+.pending-file-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.pending-file-icon { font-size: 1.4rem; flex-shrink: 0; }
+
+.pending-file-info { flex: 1; }
+
+.pending-file-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pending-file-size {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-top: 1px;
+}
+
+/* ── FILE BADGE IN CHAT ── */
+.chat-file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+/* ── PLAN INLINE IN CHAT ── */
+.chat-plan-card {
+  background: var(--paper-warm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 340px;
+}
+
+.chat-plan-summary {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--ink);
+  line-height: 1.4;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-plan-rec {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  padding: 6px 8px;
+  background: var(--gold-dim);
+  border-radius: var(--radius-sm);
+}
+
+.chat-plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-plan-item:last-of-type { border-bottom: none; }
+
+.chat-plan-time {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--gold);
+  min-width: 38px;
+  margin-top: 2px;
+}
+
+.chat-plan-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.chat-plan-desc {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  line-height: 1.3;
+}
+
+.chat-plan-more {
+  font-size: 0.72rem;
+  color: var(--gold);
+  font-weight: 500;
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* ── CALORIE TRACKER ── */
+.calorie-tracker {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.calorie-tracker-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.calorie-tracker-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+
+.calorie-tracker-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.calorie-tracker-close {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.calorie-tracker-close:hover {
+  background: var(--paper-warm);
+  color: var(--ink);
+}
+
+/* Progress bar */
+.calorie-progress-wrap { margin-bottom: 16px; }
+
+.calorie-progress-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.calorie-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+
+.calorie-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.calorie-stat { display: flex; flex-direction: column; align-items: flex-start; }
+.calorie-stat--center { align-items: center; }
+.calorie-stat--right { align-items: flex-end; }
+
+.calorie-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.calorie-stat-label {
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
+}
+
+.calorie-goal-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+
+.calorie-goal-btn:hover { opacity: 0.7; }
+
+.calorie-goal-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calorie-goal-input {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  background: var(--paper-warm);
+  color: var(--ink);
+  outline: none;
+}
+
+.calorie-goal-save {
+  background: var(--gold);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Entries */
+.calorie-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.calorie-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--paper-warm);
+  border-radius: var(--radius-sm);
+}
+
+.calorie-entry-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+.calorie-entry-info { flex: 1; min-width: 0; }
+
+.calorie-entry-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calorie-entry-macros {
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  display: block;
+  margin-top: 1px;
+}
+
+.calorie-entry-cal {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.calorie-entry-remove {
+  background: none;
+  border: none;
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 50%;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.calorie-entry-remove:hover {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+}
+
+.calorie-empty {
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 12px 0;
+  font-style: italic;
+}
+
+.calorie-disclaimer {
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* ── CALORIE PROMPT IN CHAT ── */
+.calorie-prompt {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.calorie-prompt-yes {
+  padding: 7px 14px;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.calorie-prompt-yes:hover { background: var(--gold-light); }
+
+.calorie-prompt-no {
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.calorie-prompt-no:hover { border-color: var(--ink); color: var(--ink); }

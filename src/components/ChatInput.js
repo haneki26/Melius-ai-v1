@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 const SUGGESTIONS = [
@@ -9,7 +10,10 @@ const SUGGESTIONS = [
   { icon: '🎯', label: 'Custom goal', prompt: '' },
 ];
 
-const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliusReply }, ref) {
+const ChatInput = forwardRef(function ChatInput(
+  { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan },
+  ref
+) {
   const [messages, setMessages] = useState([
     {
       role: 'melius',
@@ -26,9 +30,11 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
   const [mode, setMode] = useState(null);
   const [pendingImage, setPendingImage] = useState(null);
   const [pendingImagePreview, setPendingImagePreview] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -50,48 +56,65 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
     reader.readAsDataURL(file);
   });
 
+  const toText = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const preview = URL.createObjectURL(file);
     setPendingImagePreview(preview);
-
     try {
       const base64 = await toBase64(file);
       setPendingImage({ base64, type: file.type });
-    } catch (err) {
-      console.error('Image read error:', err);
-    }
-
+    } catch (err) { console.error('Image read error:', err); }
     e.target.value = '';
   };
 
-  const clearImage = () => {
-    setPendingImage(null);
-    setPendingImagePreview(null);
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        const base64 = await toBase64(file);
+        setPendingFile({ name: file.name, type: 'pdf', base64, size: file.size });
+      } else {
+        const text = await toText(file);
+        setPendingFile({ name: file.name, type: 'text', content: text, size: file.size });
+      }
+    } catch (err) { console.error('File read error:', err); }
+    e.target.value = '';
   };
+
+  const clearImage = () => { setPendingImage(null); setPendingImagePreview(null); };
+  const clearFile = () => setPendingFile(null);
 
   const sendMessage = async (text, selectedMode, imageData) => {
     const textToSend = text?.trim() || '';
     const imageToSend = imageData || pendingImage;
-
-    if (!textToSend && !imageToSend) return;
+    if (!textToSend && !imageToSend && !pendingFile) return;
 
     setShowSuggestions(false);
 
     const userMsg = {
       role: 'user',
-      text: textToSend || '📷 Image sent',
+      text: textToSend || (pendingFile ? `📄 ${pendingFile.name}` : '📷 Image sent'),
       type: 'chat',
       imagePreview: pendingImagePreview,
+      fileName: pendingFile?.name,
     };
 
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
+    const fileToSend = pendingFile;
     setPendingImage(null);
     setPendingImagePreview(null);
+    setPendingFile(null);
     setLoading(true);
 
     try {
@@ -99,33 +122,60 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: textToSend || 'Please analyze this image',
+          message: textToSend || 'Please analyze this',
           userContext,
           history: updatedMessages,
           mode: selectedMode || mode,
           image: imageToSend || null,
+          file: fileToSend || null,
+          calorieContext: calorieData ? `User's current calorie tracker: ${calorieData.totalCalories || 0} eaten of ${calorieData.goal || 2000} goal today.` : null,
         }),
       });
 
       const data = await response.json();
 
       if (data.type === 'plan') {
-        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'plan' }]);
+        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'plan', plan: data.plan }]);
         if (onMeliusReply) onMeliusReply(data.reply);
-        setTimeout(() => onSubmit(data.plan, selectedMode || mode), 900);
+        onSubmit(data.plan, selectedMode || mode);
       } else if (data.type === 'draft') {
         setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'draft', draft: data.draft }]);
-        if (onMeliusReply) onMeliusReply(data.reply + ' ' + data.draft?.content);
+        if (onMeliusReply) onMeliusReply(data.reply);
+      } else if (data.type === 'calorie') {
+        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry }]);
+        if (onMeliusReply) onMeliusReply(data.reply);
+        // Ask if user wants to add to tracker
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: 'melius',
+            text: `Want me to add this to your calorie tracker?`,
+            type: 'calorie_prompt',
+            calorieEntry: data.calorieEntry,
+          }]);
+        }, 600);
       } else {
         setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'chat' }]);
         if (onMeliusReply) onMeliusReply(data.reply);
       }
     } catch (error) {
-      const errMsg = 'Something went wrong. Make sure the backend is running.';
-      setMessages(prev => [...prev, { role: 'melius', text: errMsg, type: 'chat' }]);
+      setMessages(prev => [...prev, { role: 'melius', text: 'Something went wrong. Please try again.', type: 'chat' }]);
     }
 
     setLoading(false);
+  };
+
+  const addToTracker = (calorieEntry) => {
+    if (!calorieEntry) return;
+    const updated = {
+      goal: calorieData?.goal || 2000,
+      entries: [...(calorieData?.entries || []), calorieEntry],
+    };
+    onCalorieUpdate(updated);
+    setMessages(prev => [...prev, {
+      role: 'melius',
+      text: `Added ${calorieEntry.name} (${calorieEntry.calories} kcal) to your tracker.`,
+      type: 'chat',
+    }]);
   };
 
   const copyToClipboard = (text) => {
@@ -138,10 +188,10 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
       setMode('Calorie analyzer');
       setMessages(prev => [...prev, {
         role: 'melius',
-        text: 'Sure! Take a photo of your food or upload an image and I will estimate the calories and macros. Keep in mind my estimates are approximate — for precise tracking always check nutritional labels.',
+        text: 'Sure! Take a photo of your food or tell me what you ate and I will estimate the calories and macros. I can also add it to your daily tracker.',
         type: 'chat',
       }]);
-      setTimeout(() => fileInputRef.current?.click(), 300);
+      setTimeout(() => imageInputRef.current?.click(), 300);
       return;
     }
     if (suggestion.label === 'Custom goal') {
@@ -162,10 +212,7 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
 
   const startListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      setMessages(prev => [...prev, { role: 'melius', text: 'Voice input requires Chrome.', type: 'chat' }]);
-      return;
-    }
+    if (!SR) return;
     const recognition = new SR();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
@@ -177,30 +224,22 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
     recognition.start();
   };
 
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setListening(false);
-  };
+  const stopListening = () => { recognitionRef.current?.stop(); setListening(false); };
 
   return (
     <div className="chat-container fade-up fade-up-2">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        onChange={handleImageSelect}
-      />
+      {/* Hidden file inputs */}
+      <input ref={imageInputRef} type="file" accept="image/*" capture="environment"
+        style={{ display: 'none' }} onChange={handleImageSelect} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx,.csv"
+        style={{ display: 'none' }} onChange={handleFileSelect} />
 
       {showSuggestions && (
         <div className="suggestions-wrap fade-in">
           <p className="suggestions-label">Quick start</p>
           <div className="suggestions-grid">
             {SUGGESTIONS.map((s, i) => (
-              <button key={i} className="suggestion-bubble"
-                onClick={() => handleSuggestion(s)} type="button">
+              <button key={i} className="suggestion-bubble" onClick={() => handleSuggestion(s)} type="button">
                 <span className="suggestion-icon">{s.icon}</span>
                 <span className="suggestion-text">{s.label}</span>
               </button>
@@ -219,13 +258,47 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
       <div className="chat-messages">
         {messages.map((msg, i) => (
           <div key={i} className={`chat-bubble-wrap ${msg.role === 'user' ? 'chat-bubble-wrap--user' : 'chat-bubble-wrap--melius'}`}>
-            {msg.role === 'melius' && <div className="chat-avatar"></div>}
+            {msg.role === 'melius' && <div className="chat-avatar" />}
             <div className="chat-bubble-col">
+
+              {/* Image preview in chat */}
               {msg.imagePreview && (
                 <div className="chat-image-preview">
                   <img src={msg.imagePreview} alt="Uploaded" className="chat-image" />
                 </div>
               )}
+
+              {/* File badge in chat */}
+              {msg.fileName && (
+                <div className="chat-file-badge">📄 {msg.fileName}</div>
+              )}
+
+              {/* Plan shown inline in chat */}
+              {msg.type === 'plan' && msg.plan && (
+                <div className="chat-plan-card fade-in">
+                  <p className="chat-plan-summary">{msg.plan.summary}</p>
+                  {msg.plan.recommendations?.slice(0, 2).map((r, j) => (
+                    <div key={j} className="chat-plan-rec">
+                      <span>{r.icon}</span><span>{r.tip}</span>
+                    </div>
+                  ))}
+                  {msg.plan.schedule?.slice(0, 4).map((item, j) => (
+                    <div key={j} className="chat-plan-item">
+                      <span className="chat-plan-time">{item.time}</span>
+                      <span>{item.icon}</span>
+                      <div>
+                        <p className="chat-plan-title">{item.title}</p>
+                        <p className="chat-plan-desc">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {msg.plan.schedule?.length > 4 && (
+                    <p className="chat-plan-more">+{msg.plan.schedule.length - 4} more items — view full plan below</p>
+                  )}
+                </div>
+              )}
+
+              {/* Regular text bubble */}
               {msg.text && (
                 <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
                   {msg.text.split('\n').map((line, j) => (
@@ -233,6 +306,8 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
                   ))}
                 </div>
               )}
+
+              {/* Draft card */}
               {msg.type === 'draft' && msg.draft && (
                 <div className="draft-card fade-in">
                   <div className="draft-card-header">
@@ -246,23 +321,34 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
                   </div>
                 </div>
               )}
+
+              {/* Calorie add prompt */}
+              {msg.type === 'calorie_prompt' && msg.calorieEntry && (
+                <div className="calorie-prompt fade-in">
+                  <button className="calorie-prompt-yes" onClick={() => addToTracker(msg.calorieEntry)}>
+                    ✓ Add to tracker
+                  </button>
+                  <button className="calorie-prompt-no" onClick={() => {}}>
+                    Skip
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
 
         {loading && (
           <div className="chat-bubble-wrap chat-bubble-wrap--melius">
-            <div className="chat-avatar"></div>
+            <div className="chat-avatar" />
             <div className="chat-bubble chat-bubble--melius chat-bubble--typing">
               <span className="dot" /><span className="dot" /><span className="dot" />
             </div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* Image preview before sending */}
+      {/* Pending image preview */}
       {pendingImagePreview && (
         <div className="pending-image-wrap fade-in">
           <img src={pendingImagePreview} alt="Ready to send" className="pending-image" />
@@ -271,46 +357,50 @@ const ChatInput = forwardRef(function ChatInput({ onSubmit, userContext, onMeliu
         </div>
       )}
 
+      {/* Pending file preview */}
+      {pendingFile && (
+        <div className="pending-file-wrap fade-in">
+          <span className="pending-file-icon">📄</span>
+          <div className="pending-file-info">
+            <p className="pending-file-name">{pendingFile.name}</p>
+            <p className="pending-file-size">{(pendingFile.size / 1024).toFixed(1)} KB</p>
+          </div>
+          <button className="pending-image-clear" onClick={clearFile}>✕</button>
+        </div>
+      )}
+
       <div className="chat-input-row">
         <div className="chat-input-wrap">
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder="Ask me anything — plans, questions, emails, or upload a photo..."
+            placeholder="Ask me anything — plans, questions, emails, food photos..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
           />
           {/* Camera button */}
-          <button
-            className="chat-camera-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Upload image"
-            type="button"
-          >
+          <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">
             📷
           </button>
+          {/* File button */}
+          <button className="chat-file-btn" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
+            📎
+          </button>
           {/* Mic button */}
-          <button
-            className={`chat-mic-btn ${listening ? 'chat-mic-btn--active' : ''}`}
-            onClick={listening ? stopListening : startListening}
-            type="button"
-          >
+          <button className={`chat-mic-btn ${listening ? 'chat-mic-btn--active' : ''}`}
+            onClick={listening ? stopListening : startListening} type="button">
             {listening ? '■' : '🎙'}
           </button>
         </div>
-        <button
-          className="chat-send-btn"
-          onClick={() => sendMessage(input)}
-          disabled={(!input.trim() && !pendingImage) || loading}
-          type="button"
-        >↑</button>
+        <button className="chat-send-btn" onClick={() => sendMessage(input)}
+          disabled={(!input.trim() && !pendingImage && !pendingFile) || loading} type="button">
+          ↑
+        </button>
       </div>
 
-      <p className="chat-hint">
-        Enter to send · 📷 upload photo · 🎙 speak · Tap orb to talk to Melius
-      </p>
+      <p className="chat-hint">Enter to send · 📷 photo · 📎 file · 🎙 speak · Tap orb to talk</p>
     </div>
   );
 });
