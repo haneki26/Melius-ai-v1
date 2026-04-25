@@ -4,14 +4,16 @@ import AuthScreen from './components/AuthScreen';
 import Header from './components/Header';
 import ContextBar from './components/ContextBar';
 import ChatInput from './components/ChatInput';
+import DailyPlan from './components/DailyPlan';
 import LogPanel from './components/LogPanel';
 import MeliusOrb from './components/MeliusOrb';
-import CalorieTracker from './components/Calorietracker';
+import CalorieTracker from './components/CalorieTracker';
 
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [plan, setPlan] = useState(null);
+  const [planMode, setPlanMode] = useState(null);
   const [userContext, setUserContext] = useState(null);
   const [logOpen, setLogOpen] = useState(false);
   const [lastReply, setLastReply] = useState(null);
@@ -19,6 +21,7 @@ function App() {
   const [calorieData, setCalorieData] = useState(null);
   const [showCalorieTracker, setShowCalorieTracker] = useState(false);
   const chatInputRef = useRef(null);
+  const planRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -141,6 +144,13 @@ function App() {
 
   const handlePlanReady = async (planData, mode) => {
     setPlan(planData);
+    setPlanMode(mode);
+
+    // Scroll to plan
+    setTimeout(() => {
+      planRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+
     const date = new Date().toLocaleDateString([], {
       weekday: 'short', month: 'short', day: 'numeric'
     });
@@ -182,6 +192,7 @@ function App() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setPlan(null);
+    setPlanMode(null);
     setLastReply(null);
   };
 
@@ -201,7 +212,7 @@ function App() {
     <div className="app">
       <button className="log-toggle-btn" onClick={() => setLogOpen(true)}>
         <span className="log-toggle-icon">☰</span>
-        <span className="log-toggle-label">Log</span>
+        <span>Log</span>
         {(logs.plans.length + logs.training.length) > 0 && (
           <span className="log-badge">{logs.plans.length + logs.training.length}</span>
         )}
@@ -212,7 +223,7 @@ function App() {
       <Header />
       <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
 
-      {/* Calorie tracker — shows when active */}
+      {/* Calorie tracker */}
       {showCalorieTracker && (
         <CalorieTracker
           data={calorieData}
@@ -221,7 +232,7 @@ function App() {
         />
       )}
 
-      {/* Chat is always visible — plan shows inside chat when ready */}
+      {/* Chat input — always visible */}
       <ChatInput
         ref={chatInputRef}
         onSubmit={handlePlanReady}
@@ -230,11 +241,26 @@ function App() {
         onCalorieUpdate={handleCalorieUpdate}
         calorieData={calorieData}
         currentPlan={plan}
-        onClearPlan={() => setPlan(null)}
+        onClearPlan={() => { setPlan(null); setPlanMode(null); }}
       />
 
-      <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
+      {/* Full plan display below chat — like before */}
+      {plan && (
+        <div ref={planRef} className="plan-below-chat fade-in">
+          <div className="plan-below-header">
+            <p className="plan-below-eyebrow">{planMode || 'Daily plan'}</p>
+            <button
+              className="plan-below-close"
+              onClick={() => { setPlan(null); setPlanMode(null); }}
+            >
+              ✕ Clear plan
+            </button>
+          </div>
+          <DailyPlan plan={plan} onReset={() => { setPlan(null); setPlanMode(null); }} />
+        </div>
+      )}
 
+      <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
       <LogPanel isOpen={logOpen} onClose={() => setLogOpen(false)} logs={logs} />
     </div>
   );

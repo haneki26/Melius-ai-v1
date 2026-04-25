@@ -2591,4 +2591,43 @@ body::before {
   transition: all 0.15s;
 }
 
-.calorie-prompt-no:hover { border-color: var(--ink); color: var(--ink); }
+.calorie-prompt-no:hover { border-color: var(--ink); color: var(--ink); }/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+/* ── PLAN BELOW CHAT ── */
+.plan-below-chat {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.plan-below-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.plan-below-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.plan-below-close {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.plan-below-close:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
