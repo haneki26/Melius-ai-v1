@@ -4,7 +4,6 @@ import AuthScreen from './components/AuthScreen';
 import Header from './components/Header';
 import ContextBar from './components/ContextBar';
 import ChatInput from './components/ChatInput';
-import DailyPlan from './components/DailyPlan';
 import LogPanel from './components/LogPanel';
 import MeliusOrb from './components/MeliusOrb';
 import CalorieTracker from './components/Calorietracker';
