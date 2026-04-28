@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 
 const STATES = {
   IDLE: 'idle',
@@ -8,11 +8,8 @@ const STATES = {
   SPEAKING: 'speaking',
 };
 
-// Flame-style sun rays like reference image — curved organic rays
 const SunRays = () => (
   <svg viewBox="-80 -80 160 160" xmlns="http://www.w3.org/2000/svg">
-    {/* 16 curved flame rays alternating long and short */}
-    {/* Long rays */}
     <path d="M 0,-32 C 4,-48 6,-65 0,-72 C -6,-65 -4,-48 0,-32" fill="#C9A84C"/>
     <path d="M 0,32 C -4,48 -6,65 0,72 C 6,65 4,48 0,32" fill="#C9A84C"/>
     <path d="M -32,0 C -48,-4 -65,-6 -72,0 C -65,6 -48,4 -32,0" fill="#C9A84C"/>
@@ -21,7 +18,6 @@ const SunRays = () => (
     <path d="M 22,-22 C 36,-33 50,-44 51,-51 C 44,-50 33,-36 22,-22" fill="#C9A84C"/>
     <path d="M -22,22 C -33,36 -44,50 -51,51 C -50,44 -36,33 -22,22" fill="#C9A84C"/>
     <path d="M 22,22 C 36,33 50,44 51,51 C 44,50 33,36 22,22" fill="#C9A84C"/>
-    {/* Short rays between */}
     <path d="M -12,-30 C -14,-44 -12,-55 -10,-58 C -6,-52 -7,-42 -12,-30" fill="#C9A84C" opacity="0.75"/>
     <path d="M 12,-30 C 14,-44 12,-55 10,-58 C 6,-52 7,-42 12,-30" fill="#C9A84C" opacity="0.75"/>
     <path d="M -12,30 C -14,44 -12,55 -10,58 C -6,52 -7,42 -12,30" fill="#C9A84C" opacity="0.75"/>
@@ -36,15 +32,14 @@ const SunRays = () => (
 function MeliusOrb({ onTranscript, lastReply }) {
   const [orbState, setOrbState] = useState(STATES.IDLE);
   const [amplitude, setAmplitude] = useState(0);
-  const [displayTranscript, setDisplayTranscript] = useState('');
 
   const synthRef = useRef(window.speechSynthesis);
   const animFrameRef = useRef(null);
   const micStreamRef = useRef(null);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
+  const isListeningRef = useRef(false);
 
-  // Define stopEverything BEFORE the useEffect that uses it
   const stopAmplitudeTracking = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (micStreamRef.current) {
@@ -58,16 +53,8 @@ function MeliusOrb({ onTranscript, lastReply }) {
     synthRef.current?.cancel();
     recognitionRef.current?.abort();
     stopAmplitudeTracking();
+    isListeningRef.current = false;
   };
-
-  useEffect(() => {
-    if (lastReply) speakText(lastReply);
-  }, [lastReply]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    return () => stopEverything();
-  }, []);
 
   const speakText = (text) => {
     if (!window.speechSynthesis) return;
@@ -100,6 +87,13 @@ function MeliusOrb({ onTranscript, lastReply }) {
     synthRef.current.speak(utterance);
   };
 
+  // Speak when lastReply changes
+  const lastReplyRef = useRef(null);
+  if (lastReply && lastReply !== lastReplyRef.current) {
+    lastReplyRef.current = lastReply;
+    speakText(lastReply);
+  }
+
   const startAmplitudeTracking = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -111,6 +105,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
       source.connect(analyser);
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
+        if (!isListeningRef.current) return;
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
         setAmplitude(avg);
@@ -128,6 +123,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
     }
     if (orbState === STATES.THINKING) return;
     if (orbState === STATES.LISTENING) {
+      // Tap to stop listening — send what we have
       recognitionRef.current?.stop();
       return;
     }
@@ -140,43 +136,33 @@ function MeliusOrb({ onTranscript, lastReply }) {
       alert('Voice input requires Chrome browser.');
       return;
     }
+
     transcriptRef.current = '';
-    setDisplayTranscript('');
+    isListeningRef.current = true;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.continuous = true; // Keep listening until tapped
     recognitionRef.current = recognition;
-
-    let silenceTimer = null;
-    const resetSilenceTimer = () => {
-      if (silenceTimer) clearTimeout(silenceTimer);
-      silenceTimer = setTimeout(() => recognition.stop(), 2500);
-    };
 
     recognition.onstart = () => {
       setOrbState(STATES.LISTENING);
       startAmplitudeTracking();
-      silenceTimer = setTimeout(() => recognition.stop(), 5000);
     };
 
     recognition.onresult = (e) => {
-      resetSilenceTimer();
       let final = '';
-      let interim = '';
       for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
-        else interim += e.results[i][0].transcript;
       }
       if (final) transcriptRef.current = final.trim();
-      setDisplayTranscript((transcriptRef.current + ' ' + interim).trim());
+      // No transcript display — just silent accumulation
     };
 
     recognition.onend = () => {
-      if (silenceTimer) clearTimeout(silenceTimer);
       stopAmplitudeTracking();
-      setDisplayTranscript('');
+      isListeningRef.current = false;
       const finalText = transcriptRef.current.trim();
       if (finalText) {
         setOrbState(STATES.THINKING);
@@ -190,10 +176,16 @@ function MeliusOrb({ onTranscript, lastReply }) {
       }
     };
 
-    recognition.onerror = () => {
-      if (silenceTimer) clearTimeout(silenceTimer);
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') {
+        // Restart if no speech detected — keep listening
+        if (isListeningRef.current) {
+          recognition.start();
+          return;
+        }
+      }
       stopAmplitudeTracking();
-      setDisplayTranscript('');
+      isListeningRef.current = false;
       transcriptRef.current = '';
       setOrbState(STATES.IDLE);
     };
@@ -202,21 +194,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
   };
 
   const scale = orbState === STATES.LISTENING
-    ? 1 + (amplitude / 255) * 0.5
+    ? 1 + (amplitude / 255) * 0.4
     : 1;
 
   const label =
     orbState === STATES.IDLE ? 'Tap to speak' :
-    orbState === STATES.LISTENING ? 'Listening — speak slowly' :
-    orbState === STATES.THINKING ? 'Processing...' :
-    'Speaking — tap to stop';
+    orbState === STATES.LISTENING ? 'Tap to send' :
+    orbState === STATES.THINKING ? 'Thinking...' :
+    'Tap to stop';
 
   return (
     <div className="orb-container">
-      {displayTranscript && orbState === STATES.LISTENING && (
-        <div className="orb-transcript fade-in">{displayTranscript}</div>
-      )}
-
       <button
         className={`orb orb--${orbState}`}
         onClick={handleOrbClick}
@@ -232,7 +220,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
         <span className="orb-ring orb-ring--3" />
         <span className="orb-core" />
       </button>
-
       <p className="orb-label">{label}</p>
     </div>
   );
