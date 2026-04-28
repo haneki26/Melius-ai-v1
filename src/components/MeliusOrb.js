@@ -49,12 +49,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
     setAmplitude(0);
   };
 
-  const stopEverything = () => {
-    synthRef.current?.cancel();
-    recognitionRef.current?.abort();
-    stopAmplitudeTracking();
-    isListeningRef.current = false;
-  };
+ 
 
   const speakText = (text) => {
     if (!window.speechSynthesis) return;
