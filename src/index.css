@@ -2822,4 +2822,13 @@ body::before {
     height: 34px;
     font-size: 0.9rem;
   }
+}.chat-link {
+  color: var(--gold);
+  text-decoration: underline;
+  word-break: break-all;
+  font-size: 0.82rem;
+}
+
+.chat-link:hover {
+  opacity: 0.8;
 }

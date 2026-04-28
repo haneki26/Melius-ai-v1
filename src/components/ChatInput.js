@@ -321,9 +321,20 @@ const ChatInput = forwardRef(function ChatInput(
               )}
               {msg.text && (
                 <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
-                  {msg.text.split('\n').map((line, j) => (
-                    <span key={j}>{line}{j < msg.text.split('\n').length - 1 && <br />}</span>
-                  ))}
+                  {msg.text.split('\n').map((line, j) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = line.split(urlRegex);
+  return (
+    <span key={j}>
+      {parts.map((part, k) =>
+        urlRegex.test(part)
+          ? <a key={k} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">{part}</a>
+          : part
+      )}
+      {j < msg.text.split('\n').length - 1 && <br />}
+    </span>
+  );
+})}
                 </div>
               )}
               {msg.type === 'draft' && msg.draft && (
