@@ -283,4 +283,3 @@ export const generatePdf = async (data) => {
   return filename;
 };
 
-export default { generatePptx, generatePdf };
