@@ -8,6 +8,7 @@ import DailyPlan from './components/DailyPlan';
 import LogPanel from './components/LogPanel';
 import MeliusOrb from './components/MeliusOrb';
 import CalorieTracker from './components/CalorieTracker';
+import ChatHistory from './components/ChatHistory';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -16,10 +17,14 @@ function App() {
   const [planMode, setPlanMode] = useState(null);
   const [userContext, setUserContext] = useState(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [lastReply, setLastReply] = useState(null);
   const [logs, setLogs] = useState({ plans: [], training: [], activity: [] });
   const [calorieData, setCalorieData] = useState(null);
   const [showCalorieTracker, setShowCalorieTracker] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [chats, setChats] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
   const chatInputRef = useRef(null);
   const planRef = useRef(null);
 
@@ -28,6 +33,7 @@ function App() {
       if (session?.user) {
         setUser(session.user);
         loadUserData(session.user.id);
+        loadChats(session.user.id);
       }
       setAuthLoading(false);
     });
@@ -36,15 +42,98 @@ function App() {
       if (session?.user) {
         setUser(session.user);
         loadUserData(session.user.id);
+        loadChats(session.user.id);
       } else {
         setUser(null);
         setUserContext(null);
         setLogs({ plans: [], training: [], activity: [] });
+        setChats([]);
+        setCurrentChatId(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadChats = async (userId) => {
+    const { data } = await supabase
+      .from('chats')
+      .select('id, title, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+    if (data) setChats(data);
+  };
+
+  const loadChat = async (chatId) => {
+    const { data } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('id', chatId)
+      .single();
+    if (data) {
+      setCurrentChatId(chatId);
+      setChatMessages(data.messages || []);
+      setPlan(null);
+      setPlanMode(null);
+      if (chatInputRef.current) {
+        chatInputRef.current.loadMessages(data.messages || []);
+      }
+    }
+    setHistoryOpen(false);
+  };
+
+  const startNewChat = () => {
+    setCurrentChatId(null);
+    setChatMessages([]);
+    setPlan(null);
+    setPlanMode(null);
+    if (chatInputRef.current) {
+      chatInputRef.current.resetChat();
+    }
+    setHistoryOpen(false);
+  };
+
+  const deleteChat = async (chatId) => {
+    await supabase.from('chats').delete().eq('id', chatId);
+    setChats(prev => prev.filter(c => c.id !== chatId));
+    if (currentChatId === chatId) startNewChat();
+  };
+
+  const saveChat = async (messages, userId) => {
+    if (!userId || messages.length < 2) return;
+
+    // Generate title from first user message
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    const title = firstUserMsg
+      ? firstUserMsg.text.slice(0, 50) + (firstUserMsg.text.length > 50 ? '...' : '')
+      : 'New chat';
+
+    if (currentChatId) {
+      // Update existing chat
+      await supabase.from('chats').update({
+        messages,
+        updated_at: new Date().toISOString(),
+      }).eq('id', currentChatId);
+      setChats(prev => prev.map(c =>
+        c.id === currentChatId
+          ? { ...c, title, updated_at: new Date().toISOString() }
+          : c
+      ));
+    } else {
+      // Create new chat
+      const { data } = await supabase.from('chats').insert({
+        user_id: userId,
+        title,
+        messages,
+      }).select('id, title, created_at, updated_at').single();
+
+      if (data) {
+        setCurrentChatId(data.id);
+        setChats(prev => [data, ...prev]);
+      }
+    }
+  };
 
   const loadUserData = async (userId) => {
     const { data: profile } = await supabase
@@ -146,7 +235,6 @@ function App() {
     setPlan(planData);
     setPlanMode(mode);
 
-    // Scroll to plan
     setTimeout(() => {
       planRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 300);
@@ -178,6 +266,13 @@ function App() {
     });
   };
 
+  const handleMessagesUpdate = (messages) => {
+    setChatMessages(messages);
+    if (user && messages.length >= 2) {
+      saveChat(messages, user.id);
+    }
+  };
+
   const handleCalorieUpdate = (data) => {
     setCalorieData(data);
     setShowCalorieTracker(true);
@@ -194,6 +289,8 @@ function App() {
     setPlan(null);
     setPlanMode(null);
     setLastReply(null);
+    setChats([]);
+    setCurrentChatId(null);
   };
 
   if (authLoading) {
@@ -205,7 +302,7 @@ function App() {
   }
 
   if (!user) {
-    return <AuthScreen onAuth={(u) => { setUser(u); loadUserData(u.id); }} />;
+    return <AuthScreen onAuth={(u) => { setUser(u); loadUserData(u.id); loadChats(u.id); }} />;
   }
 
   return (
@@ -220,10 +317,14 @@ function App() {
 
       <button className="signout-btn" onClick={handleSignOut} title="Sign out">↩</button>
 
+      {/* Chat history button */}
+      <button className="history-toggle-btn" onClick={() => setHistoryOpen(true)} title="Chat history">
+        🕐
+      </button>
+
       <Header />
       <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
 
-      {/* Calorie tracker */}
       {showCalorieTracker && (
         <CalorieTracker
           data={calorieData}
@@ -232,7 +333,6 @@ function App() {
         />
       )}
 
-      {/* Chat input — always visible */}
       <ChatInput
         ref={chatInputRef}
         onSubmit={handlePlanReady}
@@ -242,17 +342,15 @@ function App() {
         calorieData={calorieData}
         currentPlan={plan}
         onClearPlan={() => { setPlan(null); setPlanMode(null); }}
+        onMessagesUpdate={handleMessagesUpdate}
+        initialMessages={chatMessages}
       />
 
-      {/* Full plan display below chat — like before */}
       {plan && (
         <div ref={planRef} className="plan-below-chat fade-in">
           <div className="plan-below-header">
             <p className="plan-below-eyebrow">{planMode || 'Daily plan'}</p>
-            <button
-              className="plan-below-close"
-              onClick={() => { setPlan(null); setPlanMode(null); }}
-            >
+            <button className="plan-below-close" onClick={() => { setPlan(null); setPlanMode(null); }}>
               ✕ Clear plan
             </button>
           </div>
@@ -262,6 +360,15 @@ function App() {
 
       <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
       <LogPanel isOpen={logOpen} onClose={() => setLogOpen(false)} logs={logs} />
+      <ChatHistory
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        chats={chats}
+        currentChatId={currentChatId}
+        onLoadChat={loadChat}
+        onNewChat={startNewChat}
+        onDeleteChat={deleteChat}
+      />
     </div>
   );
 }

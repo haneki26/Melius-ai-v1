@@ -1,4 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 const SUGGESTIONS = [
@@ -10,23 +12,25 @@ const SUGGESTIONS = [
   { icon: '🎯', label: 'Custom goal', prompt: '' },
 ];
 
+const DEFAULT_MESSAGE = (name) => ({
+  role: 'melius',
+  text: name
+    ? `Hey ${name}. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`
+    : `Hey. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`,
+  type: 'chat',
+});
+
 const ChatInput = forwardRef(function ChatInput(
-  { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan },
+  { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan, onMessagesUpdate, initialMessages },
   ref
 ) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'melius',
-      text: userContext?.name
-        ? `Hey ${userContext.name}. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`
-        : `Hey. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`,
-      type: 'chat',
-    }
-  ]);
+  const [messages, setMessages] = useState(
+    initialMessages?.length > 0 ? initialMessages : [DEFAULT_MESSAGE(userContext?.name)]
+  );
   const [input, setInput] = useState('');
   const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(!initialMessages?.length);
   const [mode, setMode] = useState(null);
   const [pendingImage, setPendingImage] = useState(null);
   const [pendingImagePreview, setPendingImagePreview] = useState(null);
@@ -39,6 +43,15 @@ const ChatInput = forwardRef(function ChatInput(
 
   useImperativeHandle(ref, () => ({
     receiveVoiceInput: (text) => sendMessage(text),
+    loadMessages: (msgs) => {
+      setMessages(msgs.length > 0 ? msgs : [DEFAULT_MESSAGE(userContext?.name)]);
+      setShowSuggestions(false);
+    },
+    resetChat: () => {
+      setMessages([DEFAULT_MESSAGE(userContext?.name)]);
+      setShowSuggestions(true);
+      setMode(null);
+    },
   }));
 
   useEffect(() => {
@@ -93,6 +106,11 @@ const ChatInput = forwardRef(function ChatInput(
   const clearImage = () => { setPendingImage(null); setPendingImagePreview(null); };
   const clearFile = () => setPendingFile(null);
 
+  const updateMessages = (newMessages) => {
+    setMessages(newMessages);
+    if (onMessagesUpdate) onMessagesUpdate(newMessages);
+  };
+
   const sendMessage = async (text, selectedMode, imageData) => {
     const textToSend = text?.trim() || '';
     const imageToSend = imageData || pendingImage;
@@ -109,7 +127,7 @@ const ChatInput = forwardRef(function ChatInput(
     };
 
     const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
+    updateMessages(updatedMessages);
     setInput('');
     const fileToSend = pendingFile;
     setPendingImage(null);
@@ -128,37 +146,52 @@ const ChatInput = forwardRef(function ChatInput(
           mode: selectedMode || mode,
           image: imageToSend || null,
           file: fileToSend || null,
-          calorieContext: calorieData ? `User's current calorie tracker: ${calorieData.totalCalories || 0} eaten of ${calorieData.goal || 2000} goal today.` : null,
+          calorieContext: calorieData
+            ? `User calorie tracker: ${(calorieData.entries || []).reduce((s, e) => s + e.calories, 0)} eaten of ${calorieData.goal || 2000} goal today.`
+            : null,
         }),
       });
 
       const data = await response.json();
+      let replyMsg;
 
       if (data.type === 'plan') {
-        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'plan', plan: data.plan }]);
+        replyMsg = { role: 'melius', text: data.reply, type: 'plan', plan: data.plan };
         if (onMeliusReply) onMeliusReply(data.reply);
         onSubmit(data.plan, selectedMode || mode);
       } else if (data.type === 'draft') {
-        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'draft', draft: data.draft }]);
+        replyMsg = { role: 'melius', text: data.reply, type: 'draft', draft: data.draft };
         if (onMeliusReply) onMeliusReply(data.reply);
       } else if (data.type === 'calorie') {
-        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry }]);
+        replyMsg = { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry };
         if (onMeliusReply) onMeliusReply(data.reply);
-        // Ask if user wants to add to tracker
+        if (data.calorieEntry && onCalorieUpdate) {
+          onCalorieUpdate({ goal: calorieData?.goal || 2000, entries: calorieData?.entries || [] });
+        }
+        const withReply = [...updatedMessages, replyMsg];
+        const promptMsg = {
+          role: 'melius',
+          text: `Want me to add this to your calorie tracker?`,
+          type: 'calorie_prompt',
+          calorieEntry: data.calorieEntry,
+        };
         setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: 'melius',
-            text: `Want me to add this to your calorie tracker?`,
-            type: 'calorie_prompt',
-            calorieEntry: data.calorieEntry,
-          }]);
+          const withPrompt = [...withReply, promptMsg];
+          updateMessages(withPrompt);
         }, 600);
+        updateMessages(withReply);
+        setLoading(false);
+        return;
       } else {
-        setMessages(prev => [...prev, { role: 'melius', text: data.reply, type: 'chat' }]);
+        replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
         if (onMeliusReply) onMeliusReply(data.reply);
       }
+
+      const finalMessages = [...updatedMessages, replyMsg];
+      updateMessages(finalMessages);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'melius', text: 'Something went wrong. Please try again.', type: 'chat' }]);
+      const errMsg = { role: 'melius', text: 'Something went wrong. Please try again.', type: 'chat' };
+      updateMessages([...updatedMessages, errMsg]);
     }
 
     setLoading(false);
@@ -171,26 +204,26 @@ const ChatInput = forwardRef(function ChatInput(
       entries: [...(calorieData?.entries || []), calorieEntry],
     };
     onCalorieUpdate(updated);
-    setMessages(prev => [...prev, {
+    const confirmMsg = {
       role: 'melius',
       text: `Added ${calorieEntry.name} (${calorieEntry.calories} kcal) to your tracker.`,
       type: 'chat',
-    }]);
+    };
+    updateMessages([...messages, confirmMsg]);
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).catch(() => {});
-  };
+  const copyToClipboard = (text) => navigator.clipboard.writeText(text).catch(() => {});
 
   const handleSuggestion = (suggestion) => {
     if (suggestion.prompt === 'CALORIE_ANALYZER') {
       setShowSuggestions(false);
       setMode('Calorie analyzer');
-      setMessages(prev => [...prev, {
+      const msg = {
         role: 'melius',
         text: 'Sure! Take a photo of your food or tell me what you ate and I will estimate the calories and macros. I can also add it to your daily tracker.',
         type: 'chat',
-      }]);
+      };
+      updateMessages([...messages, msg]);
       setTimeout(() => imageInputRef.current?.click(), 300);
       return;
     }
@@ -228,7 +261,6 @@ const ChatInput = forwardRef(function ChatInput(
 
   return (
     <div className="chat-container fade-up fade-up-2">
-      {/* Hidden file inputs */}
       <input ref={imageInputRef} type="file" accept="image/*" capture="environment"
         style={{ display: 'none' }} onChange={handleImageSelect} />
       <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx,.csv"
@@ -260,27 +292,17 @@ const ChatInput = forwardRef(function ChatInput(
           <div key={i} className={`chat-bubble-wrap ${msg.role === 'user' ? 'chat-bubble-wrap--user' : 'chat-bubble-wrap--melius'}`}>
             {msg.role === 'melius' && <div className="chat-avatar" />}
             <div className="chat-bubble-col">
-
-              {/* Image preview in chat */}
               {msg.imagePreview && (
                 <div className="chat-image-preview">
                   <img src={msg.imagePreview} alt="Uploaded" className="chat-image" />
                 </div>
               )}
-
-              {/* File badge in chat */}
-              {msg.fileName && (
-                <div className="chat-file-badge">📄 {msg.fileName}</div>
-              )}
-
-              {/* Plan shown inline in chat */}
+              {msg.fileName && <div className="chat-file-badge">📄 {msg.fileName}</div>}
               {msg.type === 'plan' && msg.plan && (
                 <div className="chat-plan-card fade-in">
                   <p className="chat-plan-summary">{msg.plan.summary}</p>
                   {msg.plan.recommendations?.slice(0, 2).map((r, j) => (
-                    <div key={j} className="chat-plan-rec">
-                      <span>{r.icon}</span><span>{r.tip}</span>
-                    </div>
+                    <div key={j} className="chat-plan-rec"><span>{r.icon}</span><span>{r.tip}</span></div>
                   ))}
                   {msg.plan.schedule?.slice(0, 4).map((item, j) => (
                     <div key={j} className="chat-plan-item">
@@ -293,12 +315,10 @@ const ChatInput = forwardRef(function ChatInput(
                     </div>
                   ))}
                   {msg.plan.schedule?.length > 4 && (
-                    <p className="chat-plan-more">+{msg.plan.schedule.length - 4} more items — view full plan below</p>
+                    <p className="chat-plan-more">+{msg.plan.schedule.length - 4} more — see full plan below</p>
                   )}
                 </div>
               )}
-
-              {/* Regular text bubble */}
               {msg.text && (
                 <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
                   {msg.text.split('\n').map((line, j) => (
@@ -306,8 +326,6 @@ const ChatInput = forwardRef(function ChatInput(
                   ))}
                 </div>
               )}
-
-              {/* Draft card */}
               {msg.type === 'draft' && msg.draft && (
                 <div className="draft-card fade-in">
                   <div className="draft-card-header">
@@ -321,22 +339,17 @@ const ChatInput = forwardRef(function ChatInput(
                   </div>
                 </div>
               )}
-
-              {/* Calorie add prompt */}
               {msg.type === 'calorie_prompt' && msg.calorieEntry && (
                 <div className="calorie-prompt fade-in">
                   <button className="calorie-prompt-yes" onClick={() => addToTracker(msg.calorieEntry)}>
                     ✓ Add to tracker
                   </button>
-                  <button className="calorie-prompt-no" onClick={() => {}}>
-                    Skip
-                  </button>
+                  <button className="calorie-prompt-no" onClick={() => {}}>Skip</button>
                 </div>
               )}
             </div>
           </div>
         ))}
-
         {loading && (
           <div className="chat-bubble-wrap chat-bubble-wrap--melius">
             <div className="chat-avatar" />
@@ -348,7 +361,6 @@ const ChatInput = forwardRef(function ChatInput(
         <div ref={bottomRef} />
       </div>
 
-      {/* Pending image preview */}
       {pendingImagePreview && (
         <div className="pending-image-wrap fade-in">
           <img src={pendingImagePreview} alt="Ready to send" className="pending-image" />
@@ -357,7 +369,6 @@ const ChatInput = forwardRef(function ChatInput(
         </div>
       )}
 
-      {/* Pending file preview */}
       {pendingFile && (
         <div className="pending-file-wrap fade-in">
           <span className="pending-file-icon">📄</span>
@@ -371,35 +382,20 @@ const ChatInput = forwardRef(function ChatInput(
 
       <div className="chat-input-row">
         <div className="chat-input-wrap">
-          <textarea
-            ref={inputRef}
-            className="chat-input"
+          <textarea ref={inputRef} className="chat-input"
             placeholder="Ask me anything — plans, questions, emails, food photos..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
-          />
-          {/* Camera button */}
-          <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">
-            📷
-          </button>
-          {/* File button */}
-          <button className="chat-file-btn" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
-            📎
-          </button>
-          {/* Mic button */}
+            value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown} rows={1} />
+          <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">📷</button>
+          <button className="chat-file-btn" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">📎</button>
           <button className={`chat-mic-btn ${listening ? 'chat-mic-btn--active' : ''}`}
             onClick={listening ? stopListening : startListening} type="button">
             {listening ? '■' : '🎙'}
           </button>
         </div>
         <button className="chat-send-btn" onClick={() => sendMessage(input)}
-          disabled={(!input.trim() && !pendingImage && !pendingFile) || loading} type="button">
-          ↑
-        </button>
+          disabled={(!input.trim() && !pendingImage && !pendingFile) || loading} type="button">↑</button>
       </div>
-
       <p className="chat-hint">Enter to send · 📷 photo · 📎 file · 🎙 speak · Tap orb to talk</p>
     </div>
   );
