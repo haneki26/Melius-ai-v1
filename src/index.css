@@ -2989,4 +2989,221 @@ body::before {
     width: 52px !important;
     height: 52px !important;
   }
+}/* ===== REPLACE THE CHAT SECTION IN src/index.css ===== */
+/* ===== Find each class and update it — or paste at very bottom to override ===== */
+
+/* ── CHAT CONTAINER ── */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── CHAT MESSAGES — open, no fixed height ── */
+.chat-messages {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 8px 0 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  min-height: 160px !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  box-shadow: none !important;
+}
+
+/* ── BUBBLES ── */
+.chat-bubble {
+  max-width: 80% !important;
+  padding: 12px 16px !important;
+  border-radius: 18px !important;
+  font-size: 0.9rem !important;
+  line-height: 1.65 !important;
+  animation: fadeUp 0.3s ease-out both !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.chat-bubble--melius {
+  background: var(--paper-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--ink) !important;
+  border-bottom-left-radius: 4px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05) !important;
+}
+
+.chat-bubble--user {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border: none !important;
+  border-bottom-right-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+/* ── TYPING DOTS — gold ── */
+.dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: var(--gold) !important;
+  opacity: 0.8 !important;
+  animation: bounce 1.2s infinite !important;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s !important; }
+.dot:nth-child(3) { animation-delay: 0.4s !important; }
+
+/* ── AVATAR ── */
+.chat-avatar {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  background: var(--gold-dim) !important;
+  border: 1px solid var(--gold-border) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  align-self: flex-end !important;
+}
+
+.chat-avatar::before {
+  content: '✦' !important;
+  color: var(--gold) !important;
+  font-size: 10px !important;
+}
+
+/* ── INPUT AREA ── */
+.chat-input-row {
+  border-top: 1px solid var(--border) !important;
+  padding-top: 14px !important;
+  margin-top: 4px !important;
+}
+
+.chat-input {
+  border-radius: 20px !important;
+  background: var(--paper-card) !important;
+  border: 1px solid var(--border-strong) !important;
+  font-size: 0.9rem !important;
+  padding: 13px 96px 13px 18px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+.chat-send-btn {
+  width: 38px !important;
+  height: 38px !important;
+  background: var(--ink) !important;
+  border-radius: 50% !important;
+  font-size: 1rem !important;
+}
+
+.chat-send-btn:hover {
+  background: var(--gold) !important;
+  color: var(--ink) !important;
+}
+
+/* ── ORB — centered below input ── */
+.orb-container {
+  position: relative !important;
+  bottom: auto !important;
+  right: auto !important;
+  left: auto !important;
+  transform: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 16px 0 8px !important;
+  border-top: 1px solid var(--border) !important;
+  margin-top: 4px !important;
+  z-index: 10 !important;
+}
+
+.orb {
+  width: 60px !important;
+  height: 60px !important;
+  position: relative !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+.orb-core {
+  width: 50px !important;
+  height: 50px !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.orb-label {
+  font-size: 0.65rem !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--ink-faint) !important;
+  text-align: center !important;
+}
+
+.orb-rays {
+  position: absolute !important;
+  width: 130px !important;
+  height: 130px !important;
+  top: 50% !important;
+  left: 50% !important;
+  margin-left: -65px !important;
+  margin-top: -65px !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* ── CHAT HINT ── */
+.chat-hint {
+  font-size: 0.68rem !important;
+  color: var(--ink-faint) !important;
+  text-align: center !important;
+  padding: 6px 0 0 !important;
+}
+
+/* ── SUGGESTIONS ── */
+.suggestions-wrap {
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid var(--border) !important;
+  margin-bottom: 8px !important;
+}
+
+.suggestion-bubble {
+  border-radius: 20px !important;
+  padding: 8px 14px !important;
+  font-size: 0.82rem !important;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .chat-messages {
+    padding: 8px 0 20px !important;
+  }
+
+  .chat-bubble {
+    max-width: 88% !important;
+    font-size: 0.875rem !important;
+  }
+
+  .orb {
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .orb-core {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .orb-rays {
+    width: 110px !important;
+    height: 110px !important;
+    margin-left: -55px !important;
+    margin-top: -55px !important;
+  }
 }
