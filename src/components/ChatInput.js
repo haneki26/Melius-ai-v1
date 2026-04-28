@@ -1,6 +1,4 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { generatePptx, generatePdf } from './FileGenerator';
 
@@ -16,8 +14,8 @@ const SUGGESTIONS = [
 const DEFAULT_MESSAGE = (name) => ({
   role: 'melius',
   text: name
-    ? `Hey ${name}. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`
-    : `Hey. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, give recommendations, or just chat. What do you need?`,
+    ? `Hey ${name}. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, create presentations, give recommendations, or just chat. What do you need?`
+    : `Hey. I'm Melius — your personal AI. I can plan your day, answer questions, write emails, analyze food photos, create presentations, give recommendations, or just chat. What do you need?`,
   type: 'chat',
 });
 
@@ -160,45 +158,49 @@ const ChatInput = forwardRef(function ChatInput(
         replyMsg = { role: 'melius', text: data.reply, type: 'plan', plan: data.plan };
         if (onMeliusReply) onMeliusReply(data.reply);
         onSubmit(data.plan, selectedMode || mode);
+        updateMessages([...updatedMessages, replyMsg]);
+
       } else if (data.type === 'draft') {
-        replyMsg = { role: 'melius', text: data.reply, type: 'draft', draft: data.draft };} else if (data.type === 'presentation') {
-  replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
-  if (onMeliusReply) onMeliusReply(data.reply);
-  // Generate and download PPTX
-  try {
-    const filename = await generatePptx(data.file);
-    const confirmMsg = {
-      role: 'melius',
-      text: `Your presentation "${data.file.title}" has been downloaded as ${filename}. Let me know if you want to adjust anything.`,
-      type: 'chat',
-    };
-    const finalMessages = [...updatedMessages, replyMsg, confirmMsg];
-    updateMessages(finalMessages);
-    setLoading(false);
-    return;
-  } catch (err) {
-    console.error('PPTX error:', err);
-  }
-} else if (data.type === 'pdf') {
-  replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
-  if (onMeliusReply) onMeliusReply(data.reply);
-  // Generate and download PDF
-  try {
-    const filename = await generatePdf(data.file);
-    const confirmMsg = {
-      role: 'melius',
-      text: `Your document "${data.file.title}" has been downloaded as ${filename}. Let me know if you need changes.`,
-      type: 'chat',
-    };
-    const finalMessages = [...updatedMessages, replyMsg, confirmMsg];
-    updateMessages(finalMessages);
-    setLoading(false);
-    return;
-  } catch (err) {
-    console.error('PDF error:', err);
-  }
- 
+        replyMsg = { role: 'melius', text: data.reply, type: 'draft', draft: data.draft };
         if (onMeliusReply) onMeliusReply(data.reply);
+        updateMessages([...updatedMessages, replyMsg]);
+
+      } else if (data.type === 'presentation') {
+        replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
+        if (onMeliusReply) onMeliusReply(data.reply);
+        updateMessages([...updatedMessages, replyMsg]);
+        try {
+          const filename = await generatePptx(data.file);
+          const confirmMsg = {
+            role: 'melius',
+            text: `Your presentation "${data.file?.title}" has been downloaded as ${filename}. Let me know if you want to adjust anything.`,
+            type: 'chat',
+          };
+          updateMessages([...updatedMessages, replyMsg, confirmMsg]);
+        } catch (err) {
+          console.error('PPTX error:', err);
+          const errMsg = { role: 'melius', text: 'Could not generate the presentation. Please try again.', type: 'chat' };
+          updateMessages([...updatedMessages, replyMsg, errMsg]);
+        }
+
+      } else if (data.type === 'pdf') {
+        replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
+        if (onMeliusReply) onMeliusReply(data.reply);
+        updateMessages([...updatedMessages, replyMsg]);
+        try {
+          const filename = await generatePdf(data.file);
+          const confirmMsg = {
+            role: 'melius',
+            text: `Your document "${data.file?.title}" has been downloaded as ${filename}. Let me know if you need changes.`,
+            type: 'chat',
+          };
+          updateMessages([...updatedMessages, replyMsg, confirmMsg]);
+        } catch (err) {
+          console.error('PDF error:', err);
+          const errMsg = { role: 'melius', text: 'Could not generate the PDF. Please try again.', type: 'chat' };
+          updateMessages([...updatedMessages, replyMsg, errMsg]);
+        }
+
       } else if (data.type === 'calorie') {
         replyMsg = { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry };
         if (onMeliusReply) onMeliusReply(data.reply);
@@ -206,29 +208,28 @@ const ChatInput = forwardRef(function ChatInput(
           onCalorieUpdate({ goal: calorieData?.goal || 2000, entries: calorieData?.entries || [] });
         }
         const withReply = [...updatedMessages, replyMsg];
-        const promptMsg = {
-          role: 'melius',
-          text: `Want me to add this to your calorie tracker?`,
-          type: 'calorie_prompt',
-          calorieEntry: data.calorieEntry,
-        };
-        setTimeout(() => {
-          const withPrompt = [...withReply, promptMsg];
-          updateMessages(withPrompt);
-        }, 600);
         updateMessages(withReply);
-        setLoading(false);
-        return;
+        setTimeout(() => {
+          updateMessages([...withReply, {
+            role: 'melius',
+            text: 'Want me to add this to your calorie tracker?',
+            type: 'calorie_prompt',
+            calorieEntry: data.calorieEntry,
+          }]);
+        }, 600);
+
       } else {
         replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
         if (onMeliusReply) onMeliusReply(data.reply);
+        updateMessages([...updatedMessages, replyMsg]);
       }
 
-      const finalMessages = [...updatedMessages, replyMsg];
-      updateMessages(finalMessages);
     } catch (error) {
-      const errMsg = { role: 'melius', text: 'Something went wrong. Please try again.', type: 'chat' };
-      updateMessages([...updatedMessages, errMsg]);
+      updateMessages([...updatedMessages, {
+        role: 'melius',
+        text: 'Something went wrong. Please try again.',
+        type: 'chat',
+      }]);
     }
 
     setLoading(false);
@@ -236,17 +237,15 @@ const ChatInput = forwardRef(function ChatInput(
 
   const addToTracker = (calorieEntry) => {
     if (!calorieEntry) return;
-    const updated = {
+    onCalorieUpdate({
       goal: calorieData?.goal || 2000,
       entries: [...(calorieData?.entries || []), calorieEntry],
-    };
-    onCalorieUpdate(updated);
-    const confirmMsg = {
+    });
+    updateMessages([...messages, {
       role: 'melius',
       text: `Added ${calorieEntry.name} (${calorieEntry.calories} kcal) to your tracker.`,
       type: 'chat',
-    };
-    updateMessages([...messages, confirmMsg]);
+    }]);
   };
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text).catch(() => {});
@@ -255,12 +254,11 @@ const ChatInput = forwardRef(function ChatInput(
     if (suggestion.prompt === 'CALORIE_ANALYZER') {
       setShowSuggestions(false);
       setMode('Calorie analyzer');
-      const msg = {
+      updateMessages([...messages, {
         role: 'melius',
         text: 'Sure! Take a photo of your food or tell me what you ate and I will estimate the calories and macros. I can also add it to your daily tracker.',
         type: 'chat',
-      };
-      updateMessages([...messages, msg]);
+      }]);
       setTimeout(() => imageInputRef.current?.click(), 300);
       return;
     }
@@ -359,19 +357,19 @@ const ChatInput = forwardRef(function ChatInput(
               {msg.text && (
                 <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
                   {msg.text.split('\n').map((line, j) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = line.split(urlRegex);
-  return (
-    <span key={j}>
-      {parts.map((part, k) =>
-        urlRegex.test(part)
-          ? <a key={k} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">{part}</a>
-          : part
-      )}
-      {j < msg.text.split('\n').length - 1 && <br />}
-    </span>
-  );
-})}
+                    const urlRegex = /(https?:\/\/[^\s]+)/g;
+                    const parts = line.split(urlRegex);
+                    return (
+                      <span key={j}>
+                        {parts.map((part, k) =>
+                          urlRegex.test(part)
+                            ? <a key={k} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">{part}</a>
+                            : part
+                        )}
+                        {j < msg.text.split('\n').length - 1 && <br />}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               {msg.type === 'draft' && msg.draft && (
@@ -431,7 +429,7 @@ const ChatInput = forwardRef(function ChatInput(
       <div className="chat-input-row">
         <div className="chat-input-wrap">
           <textarea ref={inputRef} className="chat-input"
-            placeholder="Ask me anything — plans, questions, emails, food photos..."
+            placeholder="Ask me anything — plans, questions, emails, presentations..."
             value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown} rows={1} />
           <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">📷</button>
