@@ -48,7 +48,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
     }
     setAmplitude(0);
   };
-
+// eslint-disable-next-line no-unused-vars
   const stopEverything = () => {
     synthRef.current?.cancel();
     recognitionRef.current?.abort();
