@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { generatePptx, generatePdf } from './FileGenerator';
 
 const SUGGESTIONS = [
   { icon: '🏋️', label: 'Training plan', prompt: 'I want to create a training plan for today' },
@@ -160,7 +161,43 @@ const ChatInput = forwardRef(function ChatInput(
         if (onMeliusReply) onMeliusReply(data.reply);
         onSubmit(data.plan, selectedMode || mode);
       } else if (data.type === 'draft') {
-        replyMsg = { role: 'melius', text: data.reply, type: 'draft', draft: data.draft };
+        replyMsg = { role: 'melius', text: data.reply, type: 'draft', draft: data.draft };} else if (data.type === 'presentation') {
+  replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
+  if (onMeliusReply) onMeliusReply(data.reply);
+  // Generate and download PPTX
+  try {
+    const filename = await generatePptx(data.file);
+    const confirmMsg = {
+      role: 'melius',
+      text: `Your presentation "${data.file.title}" has been downloaded as ${filename}. Let me know if you want to adjust anything.`,
+      type: 'chat',
+    };
+    const finalMessages = [...updatedMessages, replyMsg, confirmMsg];
+    updateMessages(finalMessages);
+    setLoading(false);
+    return;
+  } catch (err) {
+    console.error('PPTX error:', err);
+  }
+} else if (data.type === 'pdf') {
+  replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
+  if (onMeliusReply) onMeliusReply(data.reply);
+  // Generate and download PDF
+  try {
+    const filename = await generatePdf(data.file);
+    const confirmMsg = {
+      role: 'melius',
+      text: `Your document "${data.file.title}" has been downloaded as ${filename}. Let me know if you need changes.`,
+      type: 'chat',
+    };
+    const finalMessages = [...updatedMessages, replyMsg, confirmMsg];
+    updateMessages(finalMessages);
+    setLoading(false);
+    return;
+  } catch (err) {
+    console.error('PDF error:', err);
+  }
+ 
         if (onMeliusReply) onMeliusReply(data.reply);
       } else if (data.type === 'calorie') {
         replyMsg = { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry };
