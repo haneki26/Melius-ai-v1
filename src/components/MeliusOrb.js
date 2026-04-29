@@ -44,6 +44,27 @@ const SunRays = () => (
   </svg>
 );
 
+// 5 sound bars that react to amplitude
+function SoundBars({ amplitude }) {
+  // Each bar gets a slightly different height based on amplitude + offset
+  const bars = [0.6, 1.0, 0.8, 1.0, 0.6];
+  const base = amplitude / 255;
+  return (
+    <div className="orb-sound-bars">
+      {bars.map((mult, i) => {
+        const h = Math.max(3, Math.round(base * 20 * mult));
+        return (
+          <div
+            key={i}
+            className="orb-bar"
+            style={{ height: `${h}px` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function MeliusOrb({ onTranscript, lastReply }) {
   const [orbState, setOrbState] = useState(STATES.IDLE);
   const [amplitude, setAmplitude] = useState(0);
@@ -53,21 +74,18 @@ function MeliusOrb({ onTranscript, lastReply }) {
   const synthRef = useRef(window.speechSynthesis);
   const animFrameRef = useRef(null);
   const micStreamRef = useRef(null);
+  const analyserRef = useRef(null);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
   const isListeningRef = useRef(false);
   const lastReplyRef = useRef(null);
   const voiceEnabledRef = useRef(true);
 
-  // Keep ref in sync with state
   voiceEnabledRef.current = voiceEnabled;
 
-  // Speak when lastReply changes
   if (lastReply && lastReply !== lastReplyRef.current) {
     lastReplyRef.current = lastReply;
-    if (voiceEnabledRef.current) {
-      speakText(lastReply);
-    }
+    if (voiceEnabledRef.current) speakText(lastReply);
   }
 
   const stopAmplitudeTracking = () => {
@@ -76,6 +94,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
+    analyserRef.current = null;
     setAmplitude(0);
   };
 
@@ -84,9 +103,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
     synthRef.current.cancel();
     const clean = text.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').trim();
     if (!clean) return;
-
     const utterance = new SpeechSynthesisUtterance(clean);
-    // Always speak in English regardless of browser language
     utterance.lang = 'en-GB';
     const setVoice = () => {
       const voices = synthRef.current.getVoices();
@@ -100,9 +117,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
       if (preferred) utterance.voice = preferred;
     };
     setVoice();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = setVoice;
-    }
+    if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = setVoice;
     utterance.rate = 0.9;
     utterance.pitch = 0.95;
     utterance.volume = 1;
@@ -119,14 +134,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 64; // Smaller for faster response
+      analyserRef.current = analyser;
       source.connect(analyser);
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
         if (!isListeningRef.current) return;
         analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        setAmplitude(avg);
+        // Use low-mid frequencies for voice detection
+        const voiceRange = Array.from(data.slice(2, 12));
+        const avg = voiceRange.reduce((a, b) => a + b, 0) / voiceRange.length;
+        setAmplitude(Math.round(avg));
         animFrameRef.current = requestAnimationFrame(tick);
       };
       tick();
@@ -149,16 +167,11 @@ function MeliusOrb({ onTranscript, lastReply }) {
 
   const startListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Voice input requires Chrome browser.');
-      return;
-    }
-
+    if (!SpeechRecognition) { alert('Voice input requires Chrome browser.'); return; }
     transcriptRef.current = '';
     isListeningRef.current = true;
-
     const recognition = new SpeechRecognition();
-    recognition.lang = getRecognitionLang(); // Listen in user's language
+    recognition.lang = getRecognitionLang();
     recognition.interimResults = true;
     recognition.continuous = true;
     recognitionRef.current = recognition;
@@ -181,7 +194,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
       isListeningRef.current = false;
       const finalText = transcriptRef.current.trim();
       if (finalText) {
-        // Show "heard" animation before thinking
+        // Flash heard animation
         setJustHeard(true);
         setTimeout(() => setJustHeard(false), 1200);
         setOrbState(STATES.THINKING);
@@ -220,8 +233,9 @@ function MeliusOrb({ onTranscript, lastReply }) {
     }
   };
 
+  // Scale orb with amplitude
   const scale = orbState === STATES.LISTENING
-    ? 1 + (amplitude / 255) * 0.4
+    ? 1 + (amplitude / 255) * 0.35
     : 1;
 
   const label =
@@ -239,14 +253,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
         aria-label={label}
         title={label}
       >
-        <div className="orb-rays">
-          <SunRays />
-        </div>
+        <div className="orb-rays"><SunRays /></div>
         <span className="orb-ring orb-ring--1" />
         <span className="orb-ring orb-ring--2" />
         <span className="orb-ring orb-ring--3" />
         <span className="orb-core" />
       </button>
+
+      {/* Real-time sound bars — only show when listening */}
+      {orbState === STATES.LISTENING && (
+        <SoundBars amplitude={amplitude} />
+      )}
 
       <p className="orb-label">{label}</p>
 
