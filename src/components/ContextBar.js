@@ -10,14 +10,7 @@ function ContextBar({ onContextSave, initialContext }) {
     weeklyGoals: '',
     notes: '',
   });
-  {user && (
-  <HabitTracker
-    userId={user.id}
-    onHabitsUpdate={(habits, completed) => {
-      // Pass habit context to AI later
-    }}
-  />
-)}
+  
 
   // Pre-fill from saved profile when it loads
   useEffect(() => {

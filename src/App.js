@@ -334,6 +334,14 @@ function App() {
 
       <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
 
+{user && (
+  <HabitTracker
+    userId={user.id}
+    onHabitsUpdate={(habits, completed) => {}}
+  />
+)}
+      
+
       {showCalorieTracker && (
         <CalorieTracker data={calorieData} onClose={() => setShowCalorieTracker(false)} onUpdate={setCalorieData} />
       )}
