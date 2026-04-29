@@ -8,6 +8,22 @@ const STATES = {
   SPEAKING: 'speaking',
 };
 
+// Detect browser language and map to speech recognition language
+const getRecognitionLang = () => {
+  const lang = navigator.language || navigator.userLanguage || 'en-US';
+  const map = {
+    'nb': 'nb-NO', 'nn': 'nb-NO', 'no': 'nb-NO',
+    'sv': 'sv-SE', 'da': 'da-DK', 'fi': 'fi-FI',
+    'de': 'de-DE', 'fr': 'fr-FR', 'es': 'es-ES',
+    'it': 'it-IT', 'pt': 'pt-PT', 'nl': 'nl-NL',
+    'pl': 'pl-PL', 'ru': 'ru-RU', 'ar': 'ar-SA',
+    'zh': 'zh-CN', 'ja': 'ja-JP', 'ko': 'ko-KR',
+    'tr': 'tr-TR', 'hi': 'hi-IN',
+  };
+  const prefix = lang.split('-')[0];
+  return map[prefix] || lang || 'en-US';
+};
+
 const SunRays = () => (
   <svg viewBox="-80 -80 160 160" xmlns="http://www.w3.org/2000/svg">
     <path d="M 0,-32 C 4,-48 6,-65 0,-72 C -6,-65 -4,-48 0,-32" fill="#C9A84C"/>
@@ -39,6 +55,13 @@ function MeliusOrb({ onTranscript, lastReply }) {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
   const isListeningRef = useRef(false);
+  const lastReplyRef = useRef(null);
+
+  // Speak when lastReply changes
+  if (lastReply && lastReply !== lastReplyRef.current) {
+    lastReplyRef.current = lastReply;
+    speakText(lastReply);
+  }
 
   const stopAmplitudeTracking = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -49,25 +72,28 @@ function MeliusOrb({ onTranscript, lastReply }) {
     setAmplitude(0);
   };
 
- 
-
-  const speakText = (text) => {
+  function speakText(text) {
     if (!window.speechSynthesis) return;
     synthRef.current.cancel();
     const clean = text.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').trim();
     if (!clean) return;
 
     const utterance = new SpeechSynthesisUtterance(clean);
+
+    // Match voice to user's language
+    const userLang = navigator.language || 'en-US';
     const setVoice = () => {
       const voices = synthRef.current.getVoices();
+      // Try to find a voice matching user's language
+      const langMatch = voices.find(v => v.lang.startsWith(userLang.split('-')[0]));
       const preferred = voices.find(v =>
         v.name.includes('Google UK English Female') ||
         v.name.includes('Samantha') ||
         v.name.includes('Karen') ||
         v.name.includes('Daniel') ||
         v.lang === 'en-GB'
-      ) || voices.find(v => v.lang.startsWith('en'));
-      if (preferred) utterance.voice = preferred;
+      );
+      utterance.voice = langMatch || preferred || voices.find(v => v.lang.startsWith('en'));
     };
     setVoice();
     if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -80,13 +106,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
     utterance.onend = () => { setOrbState(STATES.IDLE); setAmplitude(0); };
     utterance.onerror = () => setOrbState(STATES.IDLE);
     synthRef.current.speak(utterance);
-  };
-
-  // Speak when lastReply changes
-  const lastReplyRef = useRef(null);
-  if (lastReply && lastReply !== lastReplyRef.current) {
-    lastReplyRef.current = lastReply;
-    speakText(lastReply);
   }
 
   const startAmplitudeTracking = async () => {
@@ -118,7 +137,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
     }
     if (orbState === STATES.THINKING) return;
     if (orbState === STATES.LISTENING) {
-      // Tap to stop listening — send what we have
       recognitionRef.current?.stop();
       return;
     }
@@ -136,9 +154,9 @@ function MeliusOrb({ onTranscript, lastReply }) {
     isListeningRef.current = true;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognition.lang = getRecognitionLang(); // Auto-detect language
     recognition.interimResults = true;
-    recognition.continuous = true; // Keep listening until tapped
+    recognition.continuous = true;
     recognitionRef.current = recognition;
 
     recognition.onstart = () => {
@@ -152,7 +170,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
       }
       if (final) transcriptRef.current = final.trim();
-      // No transcript display — just silent accumulation
     };
 
     recognition.onend = () => {
@@ -172,12 +189,10 @@ function MeliusOrb({ onTranscript, lastReply }) {
     };
 
     recognition.onerror = (e) => {
-      if (e.error === 'no-speech') {
-        // Restart if no speech detected — keep listening
-        if (isListeningRef.current) {
-          recognition.start();
-          return;
-        }
+      if (e.error === 'no-speech' && isListeningRef.current) {
+        // Restart on silence — keep listening
+        try { recognition.start(); } catch (_) {}
+        return;
       }
       stopAmplitudeTracking();
       isListeningRef.current = false;
