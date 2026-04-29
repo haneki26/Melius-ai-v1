@@ -10,6 +10,7 @@ import MeliusOrb from './components/MeliusOrb';
 import CalorieTracker from './components/CalorieTracker';
 import ChatHistory from './components/ChatHistory';
 import ProjectsPanel from './components/ProjectsPanel';
+import HabitTracker from './components/HabitTracker';
 
 function App() {
   const [user, setUser] = useState(null);
