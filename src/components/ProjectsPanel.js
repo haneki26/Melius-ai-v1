@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 
-const PRESET_ICONS = ['💼', '🏋️', '📚', '🎯', '💡', '🚀', '🏃', '🎨', '💰', '🧠', '❤️', '🌍'];
-const PRESET_COLORS = ['#C9A84C', '#4C9AC9', '#4CC97A', '#C94C4C', '#9A4CC9', '#C97A4C'];
 
 function ProjectsPanel({ isOpen, onClose, projects, currentProjectId, onSelectProject, onNewProject, onDeleteProject, onUpdateProject }) {
   const [creating, setCreating] = useState(false);
