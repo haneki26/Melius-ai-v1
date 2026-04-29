@@ -3371,4 +3371,373 @@ body::before {
 .orb--listening .orb-rays {
   animation: orb-rays-spin 4s linear infinite !important;
   opacity: 0.9 !important;
+}/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+/* ── PROJECTS PANEL ── */
+.projects-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--paper);
+  border-left: 1px solid var(--border-strong);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: var(--shadow-lg);
+}
+
+.projects-panel--open { transform: translateX(0); }
+
+.projects-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 32px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.projects-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.projects-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+
+/* ── PROJECT ITEM ── */
+.project-item {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  display: flex;
+  align-items: stretch;
+}
+
+.project-item:hover {
+  background: var(--paper-warm);
+  border-color: var(--border);
+}
+
+.project-item--active {
+  background: var(--gold-dim);
+  border-color: var(--gold-border);
+}
+
+.project-item-main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+/* When project-item is itself a button (General) */
+button.project-item {
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.project-item-info { flex: 1; min-width: 0; }
+
+.project-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.project-item-desc {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-item-instructions {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-item-check {
+  font-size: 0.5rem;
+  color: var(--gold);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.project-item-actions {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+
+.project-action-btn {
+  flex: 1;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  transition: all 0.15s;
+}
+
+.project-action-btn:hover { color: var(--ink); background: var(--paper-warm); }
+.project-action-btn--delete:hover { color: #ef4444; background: rgba(239,68,68,0.06); }
+
+/* ── PROJECT FORM ── */
+.project-form {
+  background: var(--paper-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.project-form-inner {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-form-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 8px;
+}
+
+.project-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.project-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--paper-warm);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-icon-btn:hover { border-color: var(--gold); }
+.project-icon-btn--active { border-color: var(--gold); background: var(--gold-dim); }
+
+.project-color-grid {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.project-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.project-color-btn:hover { transform: scale(1.15); }
+.project-color-btn--active { border-color: var(--ink); transform: scale(1.15); }
+
+.project-form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s;
+  margin: 2px 0;
+}
+
+.project-form-input:focus { border-color: var(--gold); }
+
+.project-form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.845rem;
+  font-family: var(--font-body);
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s;
+  margin: 2px 0;
+}
+
+.project-form-textarea:focus { border-color: var(--gold); }
+.project-form-textarea::placeholder { color: var(--ink-faint); }
+
+.project-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.project-form-save {
+  flex: 1;
+  padding: 10px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.845rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.project-form-save:hover { background: var(--gold); color: var(--ink); }
+
+.project-form-cancel {
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.845rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.project-form-cancel:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ── NEW PROJECT BUTTON ── */
+.project-new-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--paper-warm);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.845rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.project-new-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+
+/* ── PROJECT BADGE IN HEADER ── */
+.project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--gold-border);
+  background: var(--gold-dim);
+  color: var(--ink-soft);
+  margin-top: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.project-badge:hover { border-color: var(--gold); }
+
+/* ── PROJECTS TOGGLE BUTTON ── */
+.projects-toggle-btn {
+  position: fixed;
+  top: 20px;
+  right: 110px;
+  z-index: 100;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--paper-card);
+  border: 1px solid var(--border-strong);
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projects-toggle-btn:hover {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+  .projects-panel { width: 100vw; max-width: 100vw; }
+  .projects-toggle-btn { top: 14px; right: 96px; width: 34px; height: 34px; font-size: 0.9rem; }
 }

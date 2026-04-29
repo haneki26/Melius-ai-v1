@@ -20,8 +20,7 @@ const DEFAULT_MESSAGE = (name) => ({
 });
 
 const ChatInput = forwardRef(function ChatInput(
-  { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan, onMessagesUpdate, initialMessages },
-  ref
+ { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan, onMessagesUpdate, initialMessages, currentProject }
 ) {
   const [messages, setMessages] = useState(
     initialMessages?.length > 0 ? initialMessages : [DEFAULT_MESSAGE(userContext?.name)]
@@ -148,6 +147,9 @@ const ChatInput = forwardRef(function ChatInput(
           calorieContext: calorieData
             ? `User calorie tracker: ${(calorieData.entries || []).reduce((s, e) => s + e.calories, 0)} eaten of ${calorieData.goal || 2000} goal today.`
             : null,
+          projectInstructions: currentProject?.instructions || null,
+          projectName: currentProject?.name || null,
+        
         }),
       });
 
