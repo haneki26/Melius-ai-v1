@@ -8,7 +8,6 @@ const STATES = {
   SPEAKING: 'speaking',
 };
 
-// Detect browser language and map to speech recognition language
 const getRecognitionLang = () => {
   const lang = navigator.language || navigator.userLanguage || 'en-US';
   const map = {
@@ -48,6 +47,8 @@ const SunRays = () => (
 function MeliusOrb({ onTranscript, lastReply }) {
   const [orbState, setOrbState] = useState(STATES.IDLE);
   const [amplitude, setAmplitude] = useState(0);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [justHeard, setJustHeard] = useState(false);
 
   const synthRef = useRef(window.speechSynthesis);
   const animFrameRef = useRef(null);
@@ -56,11 +57,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
   const transcriptRef = useRef('');
   const isListeningRef = useRef(false);
   const lastReplyRef = useRef(null);
+  const voiceEnabledRef = useRef(true);
+
+  // Keep ref in sync with state
+  voiceEnabledRef.current = voiceEnabled;
 
   // Speak when lastReply changes
   if (lastReply && lastReply !== lastReplyRef.current) {
     lastReplyRef.current = lastReply;
-    speakText(lastReply);
+    if (voiceEnabledRef.current) {
+      speakText(lastReply);
+    }
   }
 
   const stopAmplitudeTracking = () => {
@@ -79,21 +86,18 @@ function MeliusOrb({ onTranscript, lastReply }) {
     if (!clean) return;
 
     const utterance = new SpeechSynthesisUtterance(clean);
-
-    // Match voice to user's language
-    const userLang = navigator.language || 'en-US';
+    // Always speak in English regardless of browser language
+    utterance.lang = 'en-GB';
     const setVoice = () => {
       const voices = synthRef.current.getVoices();
-      // Try to find a voice matching user's language
-      const langMatch = voices.find(v => v.lang.startsWith(userLang.split('-')[0]));
       const preferred = voices.find(v =>
         v.name.includes('Google UK English Female') ||
         v.name.includes('Samantha') ||
         v.name.includes('Karen') ||
         v.name.includes('Daniel') ||
         v.lang === 'en-GB'
-      );
-      utterance.voice = langMatch || preferred || voices.find(v => v.lang.startsWith('en'));
+      ) || voices.find(v => v.lang.startsWith('en'));
+      if (preferred) utterance.voice = preferred;
     };
     setVoice();
     if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -154,7 +158,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
     isListeningRef.current = true;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = getRecognitionLang(); // Auto-detect language
+    recognition.lang = getRecognitionLang(); // Listen in user's language
     recognition.interimResults = true;
     recognition.continuous = true;
     recognitionRef.current = recognition;
@@ -177,6 +181,9 @@ function MeliusOrb({ onTranscript, lastReply }) {
       isListeningRef.current = false;
       const finalText = transcriptRef.current.trim();
       if (finalText) {
+        // Show "heard" animation before thinking
+        setJustHeard(true);
+        setTimeout(() => setJustHeard(false), 1200);
         setOrbState(STATES.THINKING);
         setTimeout(() => {
           onTranscript(finalText);
@@ -190,7 +197,6 @@ function MeliusOrb({ onTranscript, lastReply }) {
 
     recognition.onerror = (e) => {
       if (e.error === 'no-speech' && isListeningRef.current) {
-        // Restart on silence — keep listening
         try { recognition.start(); } catch (_) {}
         return;
       }
@@ -201,6 +207,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
     };
 
     recognition.start();
+  };
+
+  const toggleVoice = (e) => {
+    e.stopPropagation();
+    if (!voiceEnabled) {
+      setVoiceEnabled(true);
+    } else {
+      synthRef.current?.cancel();
+      setVoiceEnabled(false);
+      if (orbState === STATES.SPEAKING) setOrbState(STATES.IDLE);
+    }
   };
 
   const scale = orbState === STATES.LISTENING
@@ -216,7 +233,7 @@ function MeliusOrb({ onTranscript, lastReply }) {
   return (
     <div className="orb-container">
       <button
-        className={`orb orb--${orbState}`}
+        className={`orb orb--${orbState} ${justHeard ? 'orb--heard' : ''}`}
         onClick={handleOrbClick}
         style={{ '--orb-scale': scale }}
         aria-label={label}
@@ -230,7 +247,17 @@ function MeliusOrb({ onTranscript, lastReply }) {
         <span className="orb-ring orb-ring--3" />
         <span className="orb-core" />
       </button>
+
       <p className="orb-label">{label}</p>
+
+      {/* Voice on/off toggle */}
+      <button
+        className={`orb-voice-toggle ${voiceEnabled ? 'orb-voice-toggle--on' : 'orb-voice-toggle--off'}`}
+        onClick={toggleVoice}
+        title={voiceEnabled ? 'Turn off voice' : 'Turn on voice'}
+      >
+        {voiceEnabled ? '🔊' : '🔇'}
+      </button>
     </div>
   );
 }
