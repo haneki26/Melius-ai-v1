@@ -20,7 +20,8 @@ const DEFAULT_MESSAGE = (name) => ({
 });
 
 const ChatInput = forwardRef(function ChatInput(
- { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan, onMessagesUpdate, initialMessages, currentProject }
+  { onSubmit, userContext, onMeliusReply, onCalorieUpdate, calorieData, currentPlan, onClearPlan, onMessagesUpdate, initialMessages, currentProject },
+  ref
 ) {
   const [messages, setMessages] = useState(
     initialMessages?.length > 0 ? initialMessages : [DEFAULT_MESSAGE(userContext?.name)]
