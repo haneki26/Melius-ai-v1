@@ -104,6 +104,24 @@ const ChatInput = forwardRef(function ChatInput(
 
   const clearImage = () => { setPendingImage(null); setPendingImagePreview(null); };
   const clearFile = () => setPendingFile(null);
+  const handlePaste = async (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      const preview = URL.createObjectURL(file);
+      setPendingImagePreview(preview);
+      try {
+        const base64 = await toBase64(file);
+        setPendingImage({ base64, type: file.type });
+      } catch (err) { console.error('Paste error:', err); }
+      return;
+    }
+  }
+};
 
   const updateMessages = (newMessages) => {
     setMessages(newMessages);
@@ -434,7 +452,9 @@ const ChatInput = forwardRef(function ChatInput(
           <textarea ref={inputRef} className="chat-input"
             placeholder="Ask me anything — plans, questions, emails, presentations..."
             value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown} rows={1} />
+           onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            rows={1} />
           <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">📷</button>
           <button className="chat-file-btn" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">📎</button>
           <button className={`chat-mic-btn ${listening ? 'chat-mic-btn--active' : ''}`}
