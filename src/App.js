@@ -11,6 +11,7 @@ import CalorieTracker from './components/CalorieTracker';
 import ChatHistory from './components/ChatHistory';
 import ProjectsPanel from './components/ProjectsPanel';
 import HabitTracker from './components/HabitTracker';
+import WorkoutTracker from './components/WorkoutTracker';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -340,7 +341,12 @@ function App() {
     onHabitsUpdate={(habits, completed) => {}}
   />
 )}
-      
+{user && (
+  <WorkoutTracker
+    userId={user.id}
+    onWorkoutUpdate={(logs) => {}}
+  />
+)}
 
       {showCalorieTracker && (
         <CalorieTracker data={calorieData} onClose={() => setShowCalorieTracker(false)} onUpdate={setCalorieData} />
