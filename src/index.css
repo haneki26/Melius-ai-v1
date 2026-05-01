@@ -4337,4 +4337,193 @@ button.project-item {
 @keyframes imageGenPulse {
   0%, 100% { transform: scale(1); box-shadow: 0 0 12px rgba(201,168,76,0.4); }
   50% { transform: scale(1.15); box-shadow: 0 0 24px rgba(201,168,76,0.7); }
+}/* ===== PASTE AT BOTTOM OF src/index.css ===== */
+
+/* ── COLLAPSIBLE TRACKER CARDS ── */
+.tracker-card {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
 }
+
+.tracker-card:hover { box-shadow: var(--shadow-md); }
+
+.tracker-card-toggle {
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.tracker-card-toggle:hover { background: var(--paper-warm); }
+
+.tracker-card-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tracker-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.tracker-card-info { text-align: left; }
+
+.tracker-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.tracker-card-summary {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.tracker-card-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tracker-card-stat {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.tracker-card-chevron {
+  font-size: 0.6rem;
+  color: var(--ink-faint);
+  transition: transform 0.2s;
+}
+
+.tracker-card-chevron--open { transform: rotate(180deg); }
+
+.tracker-card-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--border);
+  animation: fadeUp 0.25s ease-out both;
+}
+
+/* Remove card styles from habit/workout when inside collapsible */
+.tracker-card-body .habit-tracker,
+.tracker-card-body .workout-tracker {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.tracker-card-body .habit-tracker .card,
+.tracker-card-body .workout-tracker .card {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* ── MESSAGE EDIT ── */
+.chat-bubble-wrap {
+  position: relative;
+}
+
+.chat-edit-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--paper-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+.chat-bubble-wrap--user:hover .chat-edit-btn { opacity: 1; }
+.chat-edit-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+.chat-bubble--editing {
+  background: var(--paper-warm) !important;
+  border-color: var(--gold) !important;
+  color: var(--ink) !important;
+  padding: 8px !important;
+}
+
+.chat-edit-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+  resize: none;
+  line-height: 1.65;
+  min-height: 60px;
+}
+
+.chat-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.chat-edit-save {
+  padding: 5px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chat-edit-save:hover { background: var(--gold); color: var(--ink); }
+
+.chat-edit-cancel {
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chat-edit-cancel:hover { border-color: var(--ink); color: var(--ink); }

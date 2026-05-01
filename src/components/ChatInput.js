@@ -34,12 +34,14 @@ const ChatInput = forwardRef(function ChatInput(
   const [pendingImage, setPendingImage] = useState(null);
   const [pendingImagePreview, setPendingImagePreview] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editText, setEditText] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [generatingImage, setGeneratingImage] = useState(false);
 
   useImperativeHandle(ref, () => ({
     receiveVoiceInput: (text) => sendMessage(text),
@@ -105,24 +107,44 @@ const ChatInput = forwardRef(function ChatInput(
 
   const clearImage = () => { setPendingImage(null); setPendingImagePreview(null); };
   const clearFile = () => setPendingFile(null);
+
   const handlePaste = async (e) => {
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      e.preventDefault();
-      const file = item.getAsFile();
-      if (!file) return;
-      const preview = URL.createObjectURL(file);
-      setPendingImagePreview(preview);
-      try {
-        const base64 = await toBase64(file);
-        setPendingImage({ base64, type: file.type });
-      } catch (err) { console.error('Paste error:', err); }
-      return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        const preview = URL.createObjectURL(file);
+        setPendingImagePreview(preview);
+        try {
+          const base64 = await toBase64(file);
+          setPendingImage({ base64, type: file.type });
+        } catch (err) { console.error('Paste error:', err); }
+        return;
+      }
     }
-  }
-};
+  };
+
+  const startEdit = (i, text) => {
+    setEditingIndex(i);
+    setEditText(text);
+  };
+
+  const saveEdit = async (i) => {
+    if (!editText.trim()) return;
+    const newMessages = messages.slice(0, i);
+    setEditingIndex(null);
+    setEditText('');
+    updateMessages(newMessages);
+    setTimeout(() => sendMessage(editText), 100);
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditText('');
+  };
 
   const updateMessages = (newMessages) => {
     setMessages(newMessages);
@@ -169,7 +191,6 @@ const ChatInput = forwardRef(function ChatInput(
             : null,
           projectInstructions: currentProject?.instructions || null,
           projectName: currentProject?.name || null,
-        
         }),
       });
 
@@ -201,8 +222,7 @@ const ChatInput = forwardRef(function ChatInput(
           updateMessages([...updatedMessages, replyMsg, confirmMsg]);
         } catch (err) {
           console.error('PPTX error:', err);
-          const errMsg = { role: 'melius', text: 'Could not generate the presentation. Please try again.', type: 'chat' };
-          updateMessages([...updatedMessages, replyMsg, errMsg]);
+          updateMessages([...updatedMessages, replyMsg, { role: 'melius', text: 'Could not generate the presentation. Please try again.', type: 'chat' }]);
         }
 
       } else if (data.type === 'pdf') {
@@ -219,37 +239,32 @@ const ChatInput = forwardRef(function ChatInput(
           updateMessages([...updatedMessages, replyMsg, confirmMsg]);
         } catch (err) {
           console.error('PDF error:', err);
-          const errMsg = { role: 'melius', text: 'Could not generate the PDF. Please try again.', type: 'chat' };
-          updateMessages([...updatedMessages, replyMsg, errMsg]);
+          updateMessages([...updatedMessages, replyMsg, { role: 'melius', text: 'Could not generate the PDF. Please try again.', type: 'chat' }]);
         }
-        } else if (data.type === 'image') {
-  replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
-  if (onMeliusReply) onMeliusReply(data.reply);
-  updateMessages([...updatedMessages, replyMsg]);
-  setGeneratingImage(true);
-  try {
-    const imgResponse = await fetch('https://melius-backend.onrender.com/api/generate-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: data.imagePrompt }),
-    });
-    const imgData = await imgResponse.json();
-    if (imgData.imageUrl) {
-      const imageMsg = {
-        role: 'melius',
-        text: '',
-        type: 'generated-image',
-        generatedImageUrl: imgData.imageUrl,
-      };
-      updateMessages([...updatedMessages, replyMsg, imageMsg]);
-    }
-  } catch (err) {
-    console.error('Image gen error:', err);
-    updateMessages([...updatedMessages, replyMsg, {
-      role: 'melius', text: 'Could not generate image. Please try again.', type: 'chat',
-    }]);
-  }
-  setGeneratingImage(false);
+
+      } else if (data.type === 'image') {
+        replyMsg = { role: 'melius', text: data.reply, type: 'chat' };
+        if (onMeliusReply) onMeliusReply(data.reply);
+        updateMessages([...updatedMessages, replyMsg]);
+        setGeneratingImage(true);
+        try {
+          const imgResponse = await fetch('https://melius-backend.onrender.com/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: data.imagePrompt }),
+          });
+          const imgData = await imgResponse.json();
+          if (imgData.imageUrl) {
+            updateMessages([...updatedMessages, replyMsg, {
+              role: 'melius', text: '', type: 'generated-image',
+              generatedImageUrl: imgData.imageUrl,
+            }]);
+          }
+        } catch (err) {
+          console.error('Image gen error:', err);
+          updateMessages([...updatedMessages, replyMsg, { role: 'melius', text: 'Could not generate image. Please try again.', type: 'chat' }]);
+        }
+        setGeneratingImage(false);
 
       } else if (data.type === 'calorie') {
         replyMsg = { role: 'melius', text: data.reply, type: 'calorie', calorieEntry: data.calorieEntry };
@@ -275,11 +290,7 @@ const ChatInput = forwardRef(function ChatInput(
       }
 
     } catch (error) {
-      updateMessages([...updatedMessages, {
-        role: 'melius',
-        text: 'Something went wrong. Please try again.',
-        type: 'chat',
-      }]);
+      updateMessages([...updatedMessages, { role: 'melius', text: 'Something went wrong. Please try again.', type: 'chat' }]);
     }
 
     setLoading(false);
@@ -291,11 +302,7 @@ const ChatInput = forwardRef(function ChatInput(
       goal: calorieData?.goal || 2000,
       entries: [...(calorieData?.entries || []), calorieEntry],
     });
-    updateMessages([...messages, {
-      role: 'melius',
-      text: `Added ${calorieEntry.name} (${calorieEntry.calories} kcal) to your tracker.`,
-      type: 'chat',
-    }]);
+    updateMessages([...messages, { role: 'melius', text: `Added ${calorieEntry.name} (${calorieEntry.calories} kcal) to your tracker.`, type: 'chat' }]);
   };
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text).catch(() => {});
@@ -304,11 +311,7 @@ const ChatInput = forwardRef(function ChatInput(
     if (suggestion.prompt === 'CALORIE_ANALYZER') {
       setShowSuggestions(false);
       setMode('Calorie analyzer');
-      updateMessages([...messages, {
-        role: 'melius',
-        text: 'Sure! Take a photo of your food or tell me what you ate and I will estimate the calories and macros. I can also add it to your daily tracker.',
-        type: 'chat',
-      }]);
+      updateMessages([...messages, { role: 'melius', text: 'Sure! Take a photo of your food or tell me what you ate and I will estimate the calories and macros. I can also add it to your daily tracker.', type: 'chat' }]);
       setTimeout(() => imageInputRef.current?.click(), 300);
       return;
     }
@@ -376,6 +379,9 @@ const ChatInput = forwardRef(function ChatInput(
         {messages.map((msg, i) => (
           <div key={i} className={`chat-bubble-wrap ${msg.role === 'user' ? 'chat-bubble-wrap--user' : 'chat-bubble-wrap--melius'}`}>
             {msg.role === 'melius' && <div className="chat-avatar" />}
+            {msg.role === 'user' && editingIndex !== i && (
+              <button className="chat-edit-btn" onClick={() => startEdit(i, msg.text)}>✎ Edit</button>
+            )}
             <div className="chat-bubble-col">
               {msg.imagePreview && (
                 <div className="chat-image-preview">
@@ -404,23 +410,39 @@ const ChatInput = forwardRef(function ChatInput(
                   )}
                 </div>
               )}
-              {msg.text && (
-                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
-                  {msg.text.split('\n').map((line, j) => {
-                    const urlRegex = /(https?:\/\/[^\s]+)/g;
-                    const parts = line.split(urlRegex);
-                    return (
-                      <span key={j}>
-                        {parts.map((part, k) =>
-                          urlRegex.test(part)
-                            ? <a key={k} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">{part}</a>
-                            : part
-                        )}
-                        {j < msg.text.split('\n').length - 1 && <br />}
-                      </span>
-                    );
-                  })}
+              {msg.role === 'user' && editingIndex === i ? (
+                <div className="chat-bubble chat-bubble--user chat-bubble--editing">
+                  <textarea
+                    className="chat-edit-textarea"
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(i); } }}
+                    autoFocus
+                  />
+                  <div className="chat-edit-actions">
+                    <button className="chat-edit-cancel" onClick={cancelEdit}>Cancel</button>
+                    <button className="chat-edit-save" onClick={() => saveEdit(i)}>Save & resend</button>
+                  </div>
                 </div>
+              ) : (
+                msg.text && (
+                  <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--melius'}`}>
+                    {msg.text.split('\n').map((line, j) => {
+                      const urlRegex = /(https?:\/\/[^\s]+)/g;
+                      const parts = line.split(urlRegex);
+                      return (
+                        <span key={j}>
+                          {parts.map((part, k) =>
+                            urlRegex.test(part)
+                              ? <a key={k} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">{part}</a>
+                              : part
+                          )}
+                          {j < msg.text.split('\n').length - 1 && <br />}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )
               )}
               {msg.type === 'draft' && msg.draft && (
                 <div className="draft-card fade-in">
@@ -437,37 +459,23 @@ const ChatInput = forwardRef(function ChatInput(
               )}
               {msg.type === 'calorie_prompt' && msg.calorieEntry && (
                 <div className="calorie-prompt fade-in">
-                  <button className="calorie-prompt-yes" onClick={() => addToTracker(msg.calorieEntry)}>
-                    ✓ Add to tracker
-                  </button>
+                  <button className="calorie-prompt-yes" onClick={() => addToTracker(msg.calorieEntry)}>✓ Add to tracker</button>
                   <button className="calorie-prompt-no" onClick={() => {}}>Skip</button>
                 </div>
               )}
               {msg.type === 'generated-image' && msg.generatedImageUrl && (
-        <div className="generated-image-wrap fade-in">
-    <img
-      src={msg.generatedImageUrl}
-      alt="Generated by Melius AI"
-      className="generated-image"
-    />
-    <div className="generated-image-actions">
-      <a
-        href={msg.generatedImageUrl}
-        download="melius-image.png"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="generated-image-download"
-      >
-        ↓ Download
-      </a>
-    </div>
-  </div>
-)}
+                <div className="generated-image-wrap fade-in">
+                  <img src={msg.generatedImageUrl} alt="Generated by Melius AI" className="generated-image" />
+                  <div className="generated-image-actions">
+                    <a href={msg.generatedImageUrl} download="melius-image.png" target="_blank" rel="noopener noreferrer" className="generated-image-download">
+                      ↓ Download
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          
         ))}
-        
 
         {loading && (
           <div className="chat-bubble-wrap chat-bubble-wrap--melius">
@@ -477,18 +485,19 @@ const ChatInput = forwardRef(function ChatInput(
             </div>
           </div>
         )}
+
+        {generatingImage && (
+          <div className="chat-bubble-wrap chat-bubble-wrap--melius">
+            <div className="chat-avatar" />
+            <div className="generating-image-indicator fade-in">
+              <div className="generating-image-orb"></div>
+              <p>Creating your image...</p>
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
-      {generatingImage && (
-  <div className="chat-bubble-wrap chat-bubble-wrap--melius">
-    <div className="chat-avatar" />
-    <div className="generating-image-indicator fade-in">
-      <div className="generating-image-orb"></div>
-      <p>Creating your image...</p>
-    </div>
-  </div>
-)}
-      
 
       {pendingImagePreview && (
         <div className="pending-image-wrap fade-in">
@@ -514,7 +523,7 @@ const ChatInput = forwardRef(function ChatInput(
           <textarea ref={inputRef} className="chat-input"
             placeholder="Ask me anything — plans, questions, emails, presentations..."
             value={input} onChange={(e) => setInput(e.target.value)}
-           onKeyDown={handleKeyDown}
+            onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             rows={1} />
           <button className="chat-camera-btn" onClick={() => imageInputRef.current?.click()} title="Upload image" type="button">📷</button>

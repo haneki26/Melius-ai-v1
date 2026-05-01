@@ -12,6 +12,7 @@ import ChatHistory from './components/ChatHistory';
 import ProjectsPanel from './components/ProjectsPanel';
 import HabitTracker from './components/HabitTracker';
 import WorkoutTracker from './components/WorkoutTracker';
+import CollapsibleTracker from './components/CollapsibleTracker';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -33,6 +34,9 @@ function App() {
   const [currentProject, setCurrentProject] = useState(null);
   const chatInputRef = useRef(null);
   const planRef = useRef(null);
+  const [habitSummary, setHabitSummary] = useState({ completed: 0, total: 0 });
+const [workoutSummary, setWorkoutSummary] = useState({ sessions: 0 });
+const [currentStreak, setCurrentStreak] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -336,17 +340,39 @@ function App() {
       <ContextBar onContextSave={handleContextSave} initialContext={userContext} />
 
 {user && (
-  <HabitTracker
-    userId={user.id}
-    onHabitsUpdate={(habits, completed) => {}}
-  />
+  <CollapsibleTracker
+    icon="✦"
+    title="Habits & Streak"
+    summary={`${habitSummary.completed}/${habitSummary.total} today · ${currentStreak} day streak`}
+    stat={currentStreak > 0 ? `🔥${currentStreak}` : null}
+  >
+    <HabitTracker
+      userId={user.id}
+      onHabitsUpdate={(habits, completed) => {
+        setHabitSummary({ completed: completed.length, total: habits.length });
+      }}
+    />
+  </CollapsibleTracker>
 )}
+
+
 {user && (
-  <WorkoutTracker
-    userId={user.id}
-    onWorkoutUpdate={(logs) => {}}
-  />
+  <CollapsibleTracker
+    icon="💪"
+    title="Workout Tracker"
+    summary={workoutSummary.sessions > 0 ? `${workoutSummary.sessions} sessions logged` : 'Log your sets and weights'}
+    stat={null}
+  >
+    <WorkoutTracker
+      userId={user.id}
+      onWorkoutUpdate={(logs) => {
+        const sessions = new Set(logs.map(l => l.logged_at.split('T')[0])).size;
+        setWorkoutSummary({ sessions });
+      }}
+    />
+  </CollapsibleTracker>
 )}
+
 
       {showCalorieTracker && (
         <CalorieTracker data={calorieData} onClose={() => setShowCalorieTracker(false)} onUpdate={setCalorieData} />
@@ -377,7 +403,12 @@ function App() {
       )}
 
       <MeliusOrb onTranscript={handleOrbTranscript} lastReply={lastReply} />
-      <LogPanel isOpen={logOpen} onClose={() => setLogOpen(false)} logs={logs} />
+      <LogPanel
+  isOpen={logOpen}
+  onClose={() => setLogOpen(false)}
+  logs={logs}
+  userId={user?.id}
+/>
       <ChatHistory
         isOpen={historyOpen}
         onClose={() => setHistoryOpen(false)}
