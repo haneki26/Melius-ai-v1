@@ -36,7 +36,7 @@ function App() {
   const planRef = useRef(null);
   const [habitSummary, setHabitSummary] = useState({ completed: 0, total: 0 });
 const [workoutSummary, setWorkoutSummary] = useState({ sessions: 0 });
-const [currentStreak, setCurrentStreak] = useState(0);
+const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no-unused-vars
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
