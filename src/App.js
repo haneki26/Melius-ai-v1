@@ -13,6 +13,7 @@ import ProjectsPanel from './components/ProjectsPanel';
 import HabitTracker from './components/HabitTracker';
 import WorkoutTracker from './components/WorkoutTracker';
 import CollapsibleTracker from './components/CollapsibleTracker';
+import Onboarding from './components/Onboarding';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -37,6 +38,7 @@ function App() {
   const [habitSummary, setHabitSummary] = useState({ completed: 0, total: 0 });
 const [workoutSummary, setWorkoutSummary] = useState({ sessions: 0 });
 const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no-unused-vars
+const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -193,20 +195,24 @@ const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no
   };
 
   const loadUserData = async (userId) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (profile?.name) {
-      setUserContext({
-        name: profile.name,
-        age: profile.age?.toString() || '',
-        lifestyle: profile.lifestyle || 'student',
-        weeklyGoals: profile.weekly_goals || '',
-        notes: profile.notes || '',
-      });
-    }
+   const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', userId)
+  .single();
+if (profile?.name) {
+  setUserContext({
+    name: profile.name,
+    age: profile.age?.toString() || '',
+    lifestyle: profile.lifestyle || 'student',
+    weeklyGoals: profile.weekly_goals || '',
+    notes: profile.notes || '',
+  });
+} else {
+  setShowOnboarding(true);
+}
+
+    
 
     const { data: plans } = await supabase
       .from('plans')
@@ -261,8 +267,19 @@ const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no
       lifestyle: context.lifestyle, weekly_goals: context.weeklyGoals,
       notes: context.notes, updated_at: new Date().toISOString(),
     });
+    
   };
-
+const handleOnboardingComplete = async (formData) => {
+  setShowOnboarding(false);
+  if (!formData.name) return;
+  await handleContextSave({
+    name: formData.name,
+    age: formData.age || '',
+    lifestyle: formData.lifestyle || 'student',
+    weeklyGoals: formData.weeklyGoals || '',
+    notes: '',
+  });
+};
   const handlePlanReady = async (planData, mode) => {
     setPlan(planData);
     setPlanMode(mode);
@@ -310,6 +327,9 @@ const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no
 
   return (
     <div className="app">
+      {showOnboarding && (
+  <Onboarding onComplete={handleOnboardingComplete} />
+)}
       <button className="log-toggle-btn" onClick={() => setLogOpen(true)}>
         <span className="log-toggle-icon">☰</span>
         <span>Log</span>
@@ -429,7 +449,7 @@ const [currentStreak, setCurrentStreak] = useState(0); // eslint-disable-line no
         onDeleteProject={handleDeleteProject}
         onUpdateProject={handleUpdateProject}
       />
-    </div>
+</div>
   );
 }
 
